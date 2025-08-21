@@ -1,0 +1,6 @@
+sys-apps/systemd
+sys-apps/kbd
+sys-apps/shadow
+app-shells/bash
+#sys-apps/coreutils
+#sys-apps/pciutils

@@ -1,0 +1,16 @@
+sys-apps/systemd vanilla -importd dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -pkcs11 -bpf policykit tpm
+sys-apps/util-linux -cramfs -python
+sys-libs/ncurses -cxx
+sys-apps/kmod -lzma -zlib
+sys-fs/cryptsetup -argon2
+sys-libs/gdbm -berkdb
+sys-libs/pam -filecaps
+sys-auth/pambase -nullok
+dev-libs/libfido2 hidapi
+sys-libs/libseccomp -python
+net-misc/curl gopher -idn
+sys-auth/polkit -introspection
+dev-libs/glib -elf -introspection
+dev-libs/libxml2 -python
+#sys-apps/coreutils
+#sys-apps/pciutils zlib kmod

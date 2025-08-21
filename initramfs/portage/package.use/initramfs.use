@@ -1,0 +1,13 @@
+sys-apps/systemd -openssl -fido2 -curl -importd -dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -lzma -pcre -pkcs11 -policykit -seccomp tpm -pam
+sys-apps/util-linux -cramfs -hardlink -logger -pam -su -suid -tty-helpers -python
+sys-libs/libcap -pam
+sys-apps/shadow -pam
+sys-apps/kbd -pam
+sys-libs/ncurses -cxx
+app-arch/zstd -lzma
+sys-apps/kmod -lzma -zlib
+sys-fs/cryptsetup -argon2 -fips -openssl kernel
+app-crypt/tpm2-tss -fapi -openssl -policy mbedtls
+net-libs/mbedtls threads zlib
+#sys-apps/coreutils -openssl
+#sys-apps/pciutils zlib

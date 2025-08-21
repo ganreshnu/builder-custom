@@ -1,0 +1,6 @@
+app-shells/bash
+sys-apps/systemd
+sys-apps/kbd
+sys-apps/shadow
+acct-group/mail
+acct-user/mail

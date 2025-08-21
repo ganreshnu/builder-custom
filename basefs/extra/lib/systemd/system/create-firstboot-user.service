@@ -1,0 +1,20 @@
+[Unit]
+Description=Create firstboot user.
+ConditionPathIsReadWrite=/etc
+ConditionFirstBoot=yes
+
+DefaultDependencies=no
+After=systemd-firstboot.service
+Before=sysinit.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/share/create-firstboot-user.bash
+StandardOutput=tty
+StandardInput=tty
+StandardError=tty
+
+[Install]
+WantedBy=multi-user.target
+
