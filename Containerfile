@@ -15,7 +15,8 @@ RUN cd /usr/src/linux; make defconfig && make kernel.config
 ENV PACKAGES="dev-vcs/git \
 	sys-boot/grub \
 	sys-kernel/linux-firmware sys-firmware/intel-microcode net-wireless/wireless-regdb \
-	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils"
+	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils \
+	dev-libs/glib"
 # RUN emerge --pretend ${PACKAGES} && exit 1
 RUN emerge --jobs=$jobs ${PACKAGES}
 
@@ -31,7 +32,8 @@ RUN locale-gen --update
 RUN mkdir /overlay
 
 # copy the basefs and initramfs configs
-COPY basefs initramfs /usr/share/
+COPY basefs /usr/share/basefs
+COPY initramfs /usr/share/initramfs
 
 # copy the scripts
 COPY scripts /usr/share/scripts
