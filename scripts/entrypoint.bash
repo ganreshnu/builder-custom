@@ -23,9 +23,9 @@ Main() {
 				break
 				;;
 			initramfs|basefs )
-				# alias
 				argv+=( packages --portage-conf=/usr/share/"$1"/portage --extra-dir=/usr/share/"$1"/extra /usr/share/"$1"/world )
 				shift; break
+				;;
 			--help )
 				Usage
 				return 0
