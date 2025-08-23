@@ -29,7 +29,7 @@ SetupRoot() {
 	ln -sf ./usr/bin "$*"/sbin
 	ln -sf ./usr/lib "$*"/lib
 	ln -sf ./usr/lib64 "$*"/lib64
-	mkdir -p "$*"/{dev,proc,run,sys,tmp}
+	mkdir -p "$*"/{dev,etc,proc,run,sys,tmp}
 }
 KVersion() {
 	make --directory=/usr/src/linux --quiet kernelversion

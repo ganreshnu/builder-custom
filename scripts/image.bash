@@ -8,7 +8,10 @@ Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS] [DIRECTORY...]
 
 Options:
   --root DIRECTORY           The directory in which to install the emergeArgs.
-  --repart-conf DIRECTORY    The repart configuration directory.
+  --disk FILE|BLOCKDEV       A filename or block device on which to write the
+                             generated image.
+  --locales FILE             A locale.gen formatted file with the locales to
+                             build.
   --help                     Display this message and exit.
 
 Creates a pruned image of the composite directories.
@@ -17,7 +20,8 @@ EOD
 Main() {
 	local -A args=(
 		[root]=
-		[repart-conf]=
+		[disk]=
+		[locales]=
 	)
 	local argv=()
 	while (( $# > 0 )); do
@@ -27,10 +31,15 @@ Main() {
 				ExpectArg value count "$@"; shift $count
 				args[root]="$value"
 				;;
-			--repart-conf* )
+			--disk* )
 				local value= count=0
 				ExpectArg value count "$@"; shift $count
-				args[repart-conf]="$value"
+				args[disk]="$value"
+				;;
+			--locales* )
+				local value= count=0
+				ExpectArg value count "$@"; shift $count
+				args[locales]="$value"
 				;;
 			--help )
 				Usage
@@ -77,10 +86,27 @@ Main() {
 	fuse-overlayfs -o lowerdir=$(Join : "${lowers[@]}") /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
 
 	SetupRoot "${args[root]}"
-	tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" efi usr \
+	local includes=( usr )
+	[[ -d /overlay/efi ]] && includes+=( efi )
+	tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" "${includes[@]}" \
 		|tar --directory="${args[root]}" --extract --keep-directory-symlink
 
-	# systemd-repart --definitions="${args[repart-conf]}" --copy-source="${emptyDir}" --empty=create --size=auto --split="${args[split]}" "${overlayDir}"/"${archivename}"
+	#
+	# copy the gcc redis folder
+	#
+	TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/14/ "${args[root]}"/usr/lib64/
+
+	#
+	# generate the locales
+	#
+	[[ -n "${args[locales]}" ]] && locale-gen --destdir "${args[root]}" --config "${args[locales]}" #-- --prefix="${args[root]}"
+
+	#
+	# build the diskimage
+	#
+	[[ -n "${args[disk]}" ]] && systemd-repart --root="${args[root]}" \
+		--exclude-partitions=swap --empty=create --size=auto "${args[disk]}"
+
 	#
 	# unmount the overlay
 	#

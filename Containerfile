@@ -15,8 +15,8 @@ RUN cd /usr/src/linux; make defconfig && make kernel.config
 ENV PACKAGES="dev-vcs/git \
 	sys-boot/grub \
 	sys-kernel/linux-firmware sys-firmware/intel-microcode net-wireless/wireless-regdb \
-	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils \
-	dev-libs/glib"
+	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils sys-fs/mtools \
+	dev-libs/glib dev-libs/yajl app-arch/lzma sys-power/iasl dev-lang/ocaml"
 # RUN emerge --pretend ${PACKAGES} && exit 1
 RUN emerge --jobs=$jobs ${PACKAGES}
 
@@ -34,6 +34,8 @@ RUN mkdir /overlay
 # copy the basefs and initramfs configs
 COPY basefs /usr/share/basefs
 COPY initramfs /usr/share/initramfs
+
+COPY grub-internal.cfg /usr/share/grub-internal.cfg
 
 # copy the scripts
 COPY scripts /usr/share/scripts

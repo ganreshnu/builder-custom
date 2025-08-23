@@ -4,7 +4,7 @@ set -euo pipefail
 
 Usage() {
 	cat <<EOD
-Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS]
+Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS] [DIRECTORY...]
 
 Options:
   --nproc INT                Number of threads to use.
@@ -16,7 +16,7 @@ Options:
                              partition as the layer directories.
   --help                     Display this message and exit.
 
-Configures and builds a kernel.
+Configures and builds a kernel. If directories are passed, creates an initramfs.
 
 NOTE: mkpasswd(1) is a part of the whois package.
 EOD
@@ -102,7 +102,7 @@ Main() {
 	#
 	# build the initramfs
 	#
-	if (( $# > 0 )); then
+	if (( $# > 0 )) && [[ ! -f "${args[root]}"/efi/initramfs.cpio.zst ]]; then
 		local lowers=() modules=()
 		for arg in "$@"; do
 			if [[ -d "${arg}" ]]; then
@@ -154,8 +154,9 @@ Main() {
 		mkdir -p /tmp/initramfs/{dev,etc,proc,run,sys,tmp}
 		ln -sf ../usr/lib/os-release /tmp/initramfs/etc/initrd-release
 		ln -sf usr/lib/systemd/systemd /tmp/initramfs/init
-		# systemd-tmpfiles --root=/tmp/initramfs --create
 		systemd-sysusers --root=/tmp/initramfs
+		# systemd-tmpfiles --root=/tmp/initramfs --create
+
 		# set root password
 		[[ -n "${args[rootpw]}" ]] && echo "root:${args[rootpw]}" |chpasswd --prefix /tmp/initramfs --encrypted
 
@@ -169,6 +170,12 @@ Main() {
 			| zstd --compress --stdout > "${rootPath}"/efi/initramfs.cpio.zst
 		popd >/dev/null #/usr/src/linux/
 	fi
+
+	#
+	# build the bootloader
+	#
+	mkdir -p "${args[root]}"/efi/EFI/BOOT
+	grub-mkimage --config=/usr/share/grub-internal.cfg --compression=auto --format=x86_64-efi --prefix='(memdisk)' --output="${args[root]}"/efi/EFI/BOOT/BOOTX64.efi bli part_gpt efi_gop configfile fat search echo linux
 }
 CopyModule() {
 	for module in $(modprobe --dirname="${args[root]}/usr" --set-version="$(KVersion)" --show-depends "$*" |cut -d ' ' -f 2); do

@@ -9,5 +9,7 @@ sys-apps/kmod -lzma -zlib
 sys-fs/cryptsetup -argon2 -fips -openssl kernel
 app-crypt/tpm2-tss -fapi -openssl -policy mbedtls
 net-libs/mbedtls threads zlib
+sys-fs/btrfs-progs -convert -man
+sys-fs/erofs-utils -lz4 -lzma -zlib
 #sys-apps/coreutils -openssl
 #sys-apps/pciutils zlib
