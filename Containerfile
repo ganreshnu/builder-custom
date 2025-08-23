@@ -12,10 +12,10 @@ RUN cd /usr/src/linux && make -C usr gen_init_cpio
 COPY kernel.config /usr/src/linux/arch/x86/configs/
 RUN cd /usr/src/linux; make defconfig && make kernel.config
 
-ENV PACKAGES="dev-vcs/git \
-	sys-boot/grub \
+ENV PACKAGES="dev-vcs/git app-portage/gentoolkit \
+	sys-boot/grub app-emulation/xen \
 	sys-kernel/linux-firmware sys-firmware/intel-microcode net-wireless/wireless-regdb \
-	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils sys-fs/mtools \
+	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils sys-fs/mtools sys-fs/btrfs-progs \
 	dev-libs/glib dev-libs/yajl app-arch/lzma sys-power/iasl dev-lang/ocaml"
 # RUN emerge --pretend ${PACKAGES} && exit 1
 RUN emerge --jobs=$jobs ${PACKAGES}

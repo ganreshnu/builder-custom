@@ -175,7 +175,13 @@ Main() {
 	# build the bootloader
 	#
 	mkdir -p "${args[root]}"/efi/EFI/BOOT
-	grub-mkimage --config=/usr/share/grub-internal.cfg --compression=auto --format=x86_64-efi --prefix='(memdisk)' --output="${args[root]}"/efi/EFI/BOOT/BOOTX64.efi bli part_gpt efi_gop configfile fat search echo linux
+	grub-mkimage --config=/usr/share/grub-internal.cfg --compression=auto --format=x86_64-efi --prefix='(memdisk)' --output="${args[root]}"/efi/EFI/BOOT/BOOTX64.efi \
+		bli part_gpt efi_gop configfile fat search echo linux multiboot2 gzio
+
+	# copy over xen.gz
+	mkdir -p "${args[root]}"/efi/xen
+	cp -L /boot/xen.gz "${args[root]}"/efi/xen/
+	cp /boot/*-uc.bin "${args[root]}"/efi/xen/
 }
 CopyModule() {
 	for module in $(modprobe --dirname="${args[root]}/usr" --set-version="$(KVersion)" --show-depends "$*" |cut -d ' ' -f 2); do
