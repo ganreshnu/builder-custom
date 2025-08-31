@@ -18,9 +18,12 @@ ENV PACKAGES="dev-vcs/git app-portage/gentoolkit \
 	sys-boot/grub app-emulation/xen \
 	sys-kernel/linux-firmware sys-firmware/intel-microcode net-wireless/wireless-regdb \
 	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils sys-fs/mtools sys-fs/btrfs-progs \
-	dev-libs/glib dev-libs/yajl app-arch/lzma sys-power/iasl dev-lang/ocaml"
+	dev-libs/glib dev-libs/yajl app-arch/lzma sys-power/iasl dev-lang/ocaml dev-lang/go"
 # RUN emerge --pretend ${PACKAGES} && exit 1
 RUN emerge --jobs=$jobs ${PACKAGES}
+
+RUN git -C /usr/share clone --depth=1 https://github.com/square/certstrap.git \
+	&& cd /usr/share/certstrap && go build && ln -s /usr/share/certstrap/certstrap /usr/bin/certstrap
 
 # deal with the microcode
 RUN cpio -i --to-stdout </boot/intel-uc.img kernel/x86/microcode/GenuineIntel.bin > /boot/intel-uc.bin
