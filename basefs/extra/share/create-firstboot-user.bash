@@ -6,7 +6,7 @@ Main() {
 	until [[ -n "${username}" ]]; do
 		read -p "Please enter a username: " username
 	done
-	useradd --create-home --groups wheel "${username}"
+	useradd --create-home --groups wheel,dialout "${username}"
 	passwd "${username}"
 }
 Main "$@"
