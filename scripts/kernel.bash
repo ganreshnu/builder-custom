@@ -83,6 +83,7 @@ Main() {
 	# build the kernel
 	#
 	if [[ ! -f "${args[root]}"/efi/kconfig.zst ]]; then
+		Print 5 kernel "building the kernel"
 		# configure the kernel sources
 		/usr/share/scripts/kconfig.bash "${kconfigs[@]}"
 		# build and install the kernel
@@ -116,6 +117,8 @@ Main() {
 					modules+=( "${arg}" )
 			fi
 		done
+
+		Print 5 kernel "building the initramfs"
 
 		#
 		# mount the overlay
@@ -163,7 +166,7 @@ Main() {
 		#
 		# create cpio
 		#
-		Print 5 kernel "initramfs uncompressed size is $(du -sh /tmp/initramfs |cut -f1)"
+		Print 6 kernel "initramfs uncompressed size is $(du -sh /tmp/initramfs |cut -f1)"
 		pushd /usr/src/linux >/dev/null
 		mkdir -p "${rootPath}"/efi
 		usr/gen_initramfs.sh -o /dev/stdout /tmp/initramfs \
@@ -174,9 +177,10 @@ Main() {
 	#
 	# build the bootloader
 	#
+	Print 5 kernel "building the bootloader"
 	mkdir -p "${args[root]}"/efi/EFI/BOOT
 	grub-mkimage --config=/usr/share/grub-internal.cfg --compression=auto --format=x86_64-efi --prefix='(memdisk)' --output="${args[root]}"/efi/EFI/BOOT/BOOTX64.efi \
-		bli part_gpt efi_gop configfile fat search echo linux multiboot2 gzio
+		bli part_gpt efi_gop configfile fat search echo linux multiboot2 gzio regexp sleep
 
 	# copy over xen.gz
 	mkdir -p "${args[root]}"/efi/xen
