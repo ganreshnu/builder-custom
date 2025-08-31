@@ -10,6 +10,7 @@ Options:
   --root DIRECTORY           The directory in which to install the emergeArgs.
   --disk FILE|BLOCKDEV       A filename or block device on which to write the
                              generated image.
+  --seed UUID                A seed to use for reproducable partition tables.
   --locales FILE             A locale.gen formatted file with the locales to
                              build.
   --help                     Display this message and exit.
@@ -21,6 +22,7 @@ Main() {
 	local -A args=(
 		[root]=
 		[disk]=
+		[seed]=random
 		[locales]=
 	)
 	local argv=()
@@ -35,6 +37,11 @@ Main() {
 				local value= count=0
 				ExpectArg value count "$@"; shift $count
 				args[disk]="$value"
+				;;
+			--seed* )
+				local value= count=0
+				ExpectArg value count "$@"; shift $count
+				args[seed]="$value"
 				;;
 			--locales* )
 				local value= count=0
@@ -96,15 +103,21 @@ Main() {
 	#
 	TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/14/ "${args[root]}"/usr/lib64/
 
+
+	cp /etc/ca-certificates.conf "${args[root]}"/usr/share/factory/etc/
+	# echo 'C /etc/ca-certificates.conf' >"${args[root]}"/usr/lib/tmpfiles.d/ssl.conf
+	# echo 'd /etc/ssl/certs' >>"${args[root]}"/usr/lib/tmpfiles.d/ssl.conf
+
 	#
 	# generate the locales
 	#
-	[[ -n "${args[locales]}" ]] && locale-gen --destdir "${args[root]}" --config "${args[locales]}" #-- --prefix="${args[root]}"
+	[[ -n "${args[locales]}" ]] && locale-gen --destdir "${args[root]}" --config "${args[locales]}"
 
 	#
 	# build the diskimage
 	#
-	[[ -n "${args[disk]}" ]] && systemd-repart --root="${args[root]}" \
+	[[ -n "${args[disk]}" ]] && systemd-repart --root="${args[root]}" --seed="${args[seed]}" \
+		--certificate=verity.pem --private-key=verity-key.pem \
 		--exclude-partitions=swap --empty=create --size=auto "${args[disk]}"
 
 	#
