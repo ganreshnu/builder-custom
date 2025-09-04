@@ -26,6 +26,11 @@ Main() {
 				argv+=( packages --portage-conf=/usr/share/"$1"/portage --extra-dir=/usr/share/"$1"/extra /usr/share/"$1"/world )
 				shift; break
 				;;
+			rmpkg )
+				shift
+				rmpkg "$@"
+				return 0
+				;;
 			--help )
 				Usage
 				return 0
@@ -62,5 +67,13 @@ builder() {
 		--workdir="$PWD" builder-custom "$@"
 }
 EOD
+}
+#
+# run this in the directory that contains the ebuild
+#
+rmpkg() {
+	mv "$*" /tmp/ 
+	eclean packages
+	mv /tmp/"$*" .
 }
 Main "$@"

@@ -10,6 +10,7 @@ Options:
   --nproc INT                Number of threads to use.
   --kconfig FILE             Kernel configuration fragment file to apply. Can
                              be passed multiple times.
+  --certificate FILE         Verity signing certificate in PEM format.
   --rootpw                   Root password for initrd encrypted with mkpasswd(1).
   --root DIRECTORY           The directory in which to install the emergeArgs.
   --workdir DIRECTORY        OverlayFS workdir which must be on the same
@@ -25,6 +26,7 @@ EOD
 Main() {
 	local -A args=(
 		[nproc]=$(nproc)
+		[certificate]=
 		[rootpw]=
 		[root]=
 		[workdir]=
@@ -42,6 +44,11 @@ Main() {
 				local value= count=0
 				ExpectArg value count "$@"; shift $count
 				kconfigs+=( "$value" )
+				;;
+			--certificate* )
+				local value= count=0
+				ExpectArg value count "$@"; shift $count
+				args[certificate]="$value"
 				;;
 			--rootpw* )
 				local value= count=0
@@ -76,6 +83,7 @@ Main() {
 
 	[[ -z "${args[root]}" ]] && { >&2 Print 1 kernel "missing required option --root"; return 1; }
 	[[ -z "${args[workdir]}" ]] && { >&2 Print 1 kernel "missing required option --workdir"; return 1; }
+	[[ -z "${args[certificate]}" ]] && { >&2 Print 1 kernel "missing required option --certificate"; return 1; }
 
 	local -r rootPath="$(realpath ${args[root]})"
 
@@ -86,6 +94,8 @@ Main() {
 		Print 5 kernel "building the kernel"
 		# configure the kernel sources
 		/usr/share/scripts/kconfig.bash "${kconfigs[@]}"
+		# copy the certificate
+		cp "${args[certificate]}" /tmp/system.pem
 		# build and install the kernel
 		pushd /usr/src/linux >/dev/null
 		make -j"${args[nproc]}" --quiet
@@ -146,7 +156,7 @@ Main() {
 		# copy modules
 		#
 		mkdir -p /tmp/initramfs/usr/lib/modules/$(KVersion)
-		rm -fr /tmp/initramfs/usr/lib/modules/$(KVersion)/*
+		# rm -fr /tmp/initramfs/usr/lib/modules/$(KVersion)/*
 		for module in "${modules[@]}"; do CopyModule "${module}"; done
 		cp "${args[root]}"/usr/lib/modules/$(KVersion)/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/$(KVersion)/
 		depmod --basedir=/tmp/initramfs --outdir=/tmp/initramfs $(KVersion)
@@ -172,6 +182,8 @@ Main() {
 		usr/gen_initramfs.sh -o /dev/stdout /tmp/initramfs \
 			| zstd --compress --stdout > "${rootPath}"/efi/initramfs.cpio.zst
 		popd >/dev/null #/usr/src/linux/
+		rm -r /tmp/initramfs
+		# Print 6 kernel "initramfs compressed size is $(du -h "${rootPath}"/efi/initramfs.cpio.zst |cut -f1)"
 	fi
 
 	#

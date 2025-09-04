@@ -66,13 +66,15 @@ Main() {
 
 	[[ -z "${args[root]}" ]] && { >&2 Print 1 packages "missing required option --root"; return 1; }
 
-	local lowers=() excludes=(
+	local lowers=()
+	local excludes=(
 		--exclude=efi/kconfig.zst
 		--exclude=efi/System.map
 		--exclude=usr/lib/systemd/system-environment-generators/10-gentoo-path
 		--exclude=usr/share/factory/etc/locale.conf
 		--exclude=usr/share/factory/etc/vconsole.conf
 	)
+	local repartArgs=( --exclude-partitions=swap )
 	for arg in "$@"; do
 		if [[ -d "${arg}" ]]; then
 			lowers+=( "${arg}" )
@@ -81,6 +83,8 @@ Main() {
 			for item in "${MAPFILE[@]}"; do
 				[[ "${item}" != \#* ]] && excludes+=( --exclude="${item}" )
 				done
+		elif [[ "${arg}" =~ ^-- ]]; then
+			repartArgs+=( "${arg}" )
 		else
 			excludes+=( --exclude="${arg}" )
 		fi
@@ -103,8 +107,7 @@ Main() {
 	#
 	TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/14/ "${args[root]}"/usr/lib64/
 
-
-	cp /etc/ca-certificates.conf "${args[root]}"/usr/share/factory/etc/
+	# cp /etc/ca-certificates.conf "${args[root]}"/usr/share/factory/etc/
 	# echo 'C /etc/ca-certificates.conf' >"${args[root]}"/usr/lib/tmpfiles.d/ssl.conf
 	# echo 'd /etc/ssl/certs' >>"${args[root]}"/usr/lib/tmpfiles.d/ssl.conf
 
@@ -116,9 +119,8 @@ Main() {
 	#
 	# build the diskimage
 	#
-	[[ -n "${args[disk]}" ]] && systemd-repart --root="${args[root]}" --seed="${args[seed]}" \
-		--certificate=verity.pem --private-key=verity-key.pem \
-		--exclude-partitions=swap --empty=create --size=auto "${args[disk]}"
+	[[ -n "${args[disk]}" ]] && systemd-repart --root="${args[root]}" --seed="${args[seed]}" "${repartArgs[@]}" \
+		--empty=create --size=auto --split=yes "${args[disk]}"
 
 	#
 	# unmount the overlay
