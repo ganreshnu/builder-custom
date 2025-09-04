@@ -1,0 +1,10 @@
+post_src_install() {
+	elog "fixing sys-libs/pam tmpfiles.d and factory"
+	mkdir -p "${ED}/usr/share/factory/etc" || die
+	cp -r "${ED}/etc/security" "${ED}/usr/share/factory/etc/" || die
+	cat ->> "${ED}"/usr/lib/tmpfiles.d/${CATEGORY}-${PN}.conf <<-_EOF_
+		C /etc/security
+	_EOF_
+}
+
+# vim: ft=bash
