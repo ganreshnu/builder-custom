@@ -83,9 +83,13 @@ Main() {
 
 	[[ -z "${args[root]}" ]] && { >&2 Print 1 kernel "missing required option --root"; return 1; }
 	[[ -z "${args[workdir]}" ]] && { >&2 Print 1 kernel "missing required option --workdir"; return 1; }
-	[[ -z "${args[certificate]}" ]] && { >&2 Print 1 kernel "missing required option --certificate"; return 1; }
 
 	local -r rootPath="$(realpath ${args[root]})"
+
+	#
+	# copy verity certificate where the kernel can get it
+	#
+	[[ -f "${args[certificate]}" ]] && { kconfigs+=( /usr/share/verity-cert.config ); cp "${args[certificate]}" /tmp/system.pem; }
 
 	#
 	# build the kernel
@@ -94,8 +98,6 @@ Main() {
 		Print 5 kernel "building the kernel"
 		# configure the kernel sources
 		/usr/share/scripts/kconfig.bash "${kconfigs[@]}"
-		# copy the certificate
-		cp "${args[certificate]}" /tmp/system.pem
 		# build and install the kernel
 		pushd /usr/src/linux >/dev/null
 		make -j"${args[nproc]}" --quiet

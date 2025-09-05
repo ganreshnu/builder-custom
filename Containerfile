@@ -40,6 +40,7 @@ RUN mkdir /overlay
 COPY basefs /usr/share/basefs
 COPY initramfs /usr/share/initramfs
 
+COPY verity-cert.config /usr/share/verity-cert.config
 COPY grub-internal.cfg /usr/share/grub-internal.cfg
 
 # copy the scripts
