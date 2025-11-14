@@ -1,6 +1,0 @@
-NAME=AverettOS
-ID=averettos
-PRETTY_NAME="AverettOS Linux"
-ANSI_COLOR="1;32"
-HOME_URL="https://johnwaller.us/averettos"
-VERSION_ID="0.1"

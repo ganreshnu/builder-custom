@@ -1,4 +1,4 @@
-sys-apps/systemd -openssl -fido2 -curl -importd -dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -lzma -pcre -pkcs11 -policykit -seccomp tpm -pam
+sys-apps/systemd -openssl -fido2 -curl -importd -dns-over-tls -elfutils -gcrypt kernel-install -lz4 -lzma -pcre -pkcs11 -policykit -seccomp tpm -pam -sysv-utils -ukify -boot -kernel-install
 sys-apps/util-linux -cramfs -hardlink -logger -pam -su -suid -tty-helpers -python
 sys-libs/libcap -pam
 sys-apps/shadow -pam

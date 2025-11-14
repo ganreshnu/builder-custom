@@ -23,7 +23,7 @@ Main() {
 				break
 				;;
 			initramfs|basefs )
-				argv+=( packages --portage-conf=/usr/share/"$1"/portage --extra-dir=/usr/share/"$1"/extra /usr/share/"$1"/world )
+				argv+=( packages --portage-conf=/usr/share/"$1"/portage /usr/share/"$1"/world --extra-dir=/usr/share/"$1"/extra )
 				shift; break
 				;;
 			rmpkg )
@@ -72,8 +72,10 @@ EOD
 # run this in the directory that contains the ebuild
 #
 rmpkg() {
-	mv "$*" /tmp/ 
+	local -r ebuild="${*##*/}"
+	local -r path="${*%/*}"
+	mv "${path}"/"${ebuild}" "${path}"/"${ebuild}"-moved
 	eclean packages
-	mv /tmp/"$*" .
+	mv "${path}"/"${ebuild}"-moved "${path}"/"${ebuild}"
 }
 Main "$@"

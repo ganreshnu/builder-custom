@@ -1,0 +1,24 @@
+# $spack/opt/spack/gpg
+# $spack/var/spack/cache
+# /tmp/$user/spack-stage
+ls='ls --color=auto --group-directories-first'
+alias ls="$ls"
+alias ll="$ls -l --human-readable"
+alias la="$ls --almost-all"
+alias lla="$ls -l --human-readable --almost-all"
+alias lt="$ls --almost-all --human-readable --size -1 -S --classify"
+
+alias mnt="mount | awk -F' ' '{ printf \"%s\t%s\n\",\$1,\$3; }' | column -t | grep -E ^/dev/ | sort"
+
+alias cpv='rsync --archive --human-readable --info=PROGRESS2'
+
+alias spack='podman run --rm -it -v ${XDG_CACHE_HOME:-$HOME/.cache}/spack:/cache -v $(mkdir -p /tmp/spack-stage && echo /tmp/spack-stage):/stage -v ${HOME}/Spack/spack-gpg:/gpg -v $PWD:$PWD -w $PWD spack'
+
+alias prun='podman run --rm -it -v "$PWD":"$PWD" -w "$PWD"'
+alias picocom='picocom -b 115200'
+
+if [[ -r "$HOME/.aliases" ]]; then
+	. "$HOME/.aliases"
+fi
+
+# vim: ft=bash

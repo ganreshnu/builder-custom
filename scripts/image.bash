@@ -97,7 +97,7 @@ Main() {
 	fuse-overlayfs -o lowerdir=$(Join : "${lowers[@]}") /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
 
 	SetupRoot "${args[root]}"
-	local includes=( usr )
+	local includes=( usr boot )
 	[[ -d /overlay/efi ]] && includes+=( efi )
 	tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" "${includes[@]}" \
 		|tar --directory="${args[root]}" --extract --keep-directory-symlink
@@ -114,13 +114,63 @@ Main() {
 	#
 	# generate the locales
 	#
-	[[ -n "${args[locales]}" ]] && locale-gen --destdir "${args[root]}" --config "${args[locales]}"
+	[[ -n "${args[locales]}" ]] && locale-gen --prefix $(realpath "${args[root]}") --config "${args[locales]}"
+
+	# #
+	# # build the bootloader
+	# #
+	# Print 5 kernel "building the bootloader"
+	# mkdir -p "${args[root]}"/efi/EFI/BOOT
+	# grub-mkimage --config=/usr/share/grub-internal.cfg --compression=auto --format=x86_64-efi --prefix='(memdisk)' --output="${args[root]}"/efi/EFI/BOOT/BOOTX64.efi \
+	# 	bli part_gpt efi_gop configfile fat search echo linux multiboot2 gzio regexp sleep chain
+	#
+	# # copy over xen.gz
+	# mkdir -p "${args[root]}"/efi/xen
+	# cp -L /boot/xen.gz "${args[root]}"/efi/xen/
+	# cp /boot/*-uc.bin "${args[root]}"/efi/xen/
+	mkdir -p "${args[root]}"/boot/EFI/BOOT
+	mkdir -p "${args[root]}"/boot/loader/entries
+	cp /boot/loader.conf "${args[root]}"/boot/loader/
+	cp /boot/entries.srel "${args[root]}"/boot/loader/
+	cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "${args[root]}"/boot/EFI/BOOT/BOOTX64.EFI
+	# bootctl --esp-path="${args[root]}"/boot random-seed
 
 	#
 	# build the diskimage
 	#
+	local -r tempfile=$(mktemp)
 	[[ -n "${args[disk]}" ]] && systemd-repart --root="${args[root]}" --seed="${args[seed]}" "${repartArgs[@]}" \
-		--empty=create --size=auto --split=yes "${args[disk]}"
+		--defer-partitions=esp \
+		--empty=create --size=auto --split=yes --json=short "${args[disk]}" >"${tempfile}"
+	local -r rootUUID=$(jq -r '.[] | select(.type == "root-x86-64").uuid' "${tempfile}")
+	local -r usrhash=$(jq -r '.[] | select(.type == "usr-x86-64").roothash' "${tempfile}")
+	rm "${tempfile}"
+
+	echo "rootUUID:${rootUUID}"
+	echo "usrhash:${usrhash}"
+	# veritysetup dump "${args[disk]/.raw/.usr-x86-64-verity.raw}" >cmd.veritysetup.stdout
+	# local -r dataBlocks=$(awk '/^Data blocks/ {print $NF}' cmd.veritysetup.stdout)
+	# local -r dataBlockSize=$(awk '/^Data block size/ {print $(NF-1)}' cmd.veritysetup.stdout)
+	# local -r dataSectors=$(( $dataBlocks * $dataBlockSize / 512 ))
+	# local -r hashBlockSize=$(awk '/^Hash block size/ {print $(NF-1)}' cmd.veritysetup.stdout)
+	# local -r hashAlgorithm=$(awk '/^Hash algorithm/ {print $NF}' cmd.veritysetup.stdout)
+	# local -r salt=$(awk '/^Salt/ {print $NF}' cmd.veritysetup.stdout)
+	# dm-mod.create="usr-verity,,,ro,0 ${dataSectors} verity 1 /dev/nvme0n1p2 /dev/nvme0n1p3 ${dataBlockSize} ${hashBlockSize} ${dataBlocks} 1 ${hashAlgorithm} ${usrhash} ${salt} 1 ignore_zero_blocks"
+
+	# local -r microcode=amd-uc.img
+	# local -r microcode=intel-uc.img
+	# local -r microcode=
+	# local cmdlineArgs=(
+	# 	consoleblank=60
+	# 	rw
+	# 	root=PARTUUID="$rootUUID"
+	# 	usrhash="$usrhash"
+	# )
+	# ukify build --linux=/overlay/efi/vmlinuz --cmdline="${cmdlineArgs[*]}" \
+	# 	--os-release=@/overlay/usr/lib/os-release --initrd=/overlay/efi/initramfs.cpio.zst \
+	# 	--output="${args[root]}"/efi/uki.efi
+
+	systemd-repart --root="${args[root]}" --seed="${args[seed]}" --include-partitions=esp --split=yes --dry-run=no "${args[disk]}"
 
 	#
 	# unmount the overlay

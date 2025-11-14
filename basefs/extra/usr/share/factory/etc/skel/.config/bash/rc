@@ -1,0 +1,78 @@
+#
+# bash/rc
+#
+# If not running interactively, don't do anything
+[[ $- != *i* ]] && return
+
+# globs include dotfiles
+shopt -s dotglob
+shopt -s globstar
+
+# set the history options
+# make the xdg state directory
+[[ ! -d "${XDG_STATE_HOME:-$HOME/.local/state}/bash" ]] \
+	&& mkdir -p "${XDG_STATE_HOME:-$HOME/.local/state}/bash"
+
+# history variables
+HISTFILE="${XDG_STATE_HOME:-$HOME/.local/state}/bash/history"
+HISTCONTROL=ignoredups:ignorespace
+shopt -s histappend
+shopt -s histverify
+shopt -s cmdhist
+shopt -s lithist
+
+# include each bashrc from user configurations
+for d in $(<"${XDG_STATE_HOME:-$HOME/.local/state}/user_config_dirs"); do
+	[[ -f "$HOME/$d/.bashrc" ]] && . "$HOME/$d/.bashrc"
+done
+unset d
+
+# mkosi() {
+# 	if [[ ! -d mkosi.output ]]; then
+# 		1>&2 printf "$(tput setaf 9)!!$(tput sgr0) %s\n" "directory mkosi.output does not exist"
+# 		return 1
+# 	fi
+# 	mkosi -i --cache-dir=${XDG_CACHE_HOME:-$HOME/.cache}/mkosi.cache \
+# 		--output-dir=$(ls -d mkosi.output) --build-dir=mkosi.build
+# }
+
+__color() {
+	local color="$1"; shift
+	printf "\[$(tput setaf $color)\]%s\[$(tput sgr0)\]" "$*"
+}
+__style() {
+	local style="$1"; shift
+	printf "\[$(tput $style)\]%s\[$(tput sgr0)\]" "$*"
+}
+
+PROMPT_COMMAND=__prompt_command
+__prompt_command() {
+	local exitCode="$?"
+
+
+	__status() {
+		if git rev-parse 2>/dev/null; then
+			local branch="$(git branch --show-current)"
+			printf ' on %s' "$(__color 4 "$branch")"
+		fi
+	}
+	# PS1_GIT="$(__status)"
+
+	local color=2
+	if [[ $exitCode != 0 ]]; then
+		color=1
+	fi
+	# PS1_RESULT="$(__color "$color" '\$')"
+	PS1_RESULT="$color"
+
+	return "$exitCode"
+}
+
+PS1='[\[$(tput setaf 8)\]\h\[$(tput sgr0)\] \[$(tput setaf 3)\]\W\[$(tput sgr0)\]]\[$(tput setaf $PS1_RESULT)\]$\[$(tput sgr0)\] '
+
+
+# include aliases
+. ${XDG_CONFIG_HOME:-$HOME/.config}/bash/aliases
+
+# WLR_DRM_DEVICES=/dev/dri/card2:/dev/dri/card1
+# vim: ft=bash

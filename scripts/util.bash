@@ -24,11 +24,11 @@ Join() {
 }
 SetupRoot() {
 	mkdir -p "$*"/usr/{bin,lib,lib64}
-	ln -sf ./bin "$*"/usr/sbin
-	ln -sf ./usr/bin "$*"/bin
-	ln -sf ./usr/bin "$*"/sbin
-	ln -sf ./usr/lib "$*"/lib
-	ln -sf ./usr/lib64 "$*"/lib64
+	ln -sf usr/bin "$*"/bin
+	ln -sf usr/bin "$*"/sbin
+	ln -sf usr/lib "$*"/lib
+	ln -sf usr/lib64 "$*"/lib64
+	ln -sf bin "$*"/usr/sbin
 	mkdir -p "$*"/{dev,etc,proc,run,sys,tmp}
 }
 KVersion() {

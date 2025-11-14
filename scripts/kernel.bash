@@ -4,7 +4,7 @@ set -euo pipefail
 
 Usage() {
 	cat <<EOD
-Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS] [DIRECTORY...]
+Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS] [DIRECTORY...] [MODULE...]
 
 Options:
   --nproc INT                Number of threads to use.
@@ -12,6 +12,7 @@ Options:
                              be passed multiple times.
   --certificate FILE         Verity signing certificate in PEM format.
   --rootpw                   Root password for initrd encrypted with mkpasswd(1).
+  --no-modules               Do not copy any kernel modules into the initramfs.
   --root DIRECTORY           The directory in which to install the emergeArgs.
   --workdir DIRECTORY        OverlayFS workdir which must be on the same
                              partition as the layer directories.
@@ -30,6 +31,7 @@ Main() {
 		[rootpw]=
 		[root]=
 		[workdir]=
+		[no-modules]=
 	)
 	local argv=()
 	local kconfigs=()
@@ -54,6 +56,10 @@ Main() {
 				local value= count=0
 				ExpectArg value count "$@"; shift $count
 				args[rootpw]="$value"
+				;;
+			--no-modules )
+				args[no-modules]=true
+				shift
 				;;
 			--root* )
 				local value= count=0
@@ -146,7 +152,7 @@ Main() {
 			--exclude=usr/share/factory/etc/vconsole.conf
 		)
 		mkdir -p /tmp/initramfs
-		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" bin lib lib64 sbin usr \
+		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" etc bin lib lib64 sbin usr init var \
 			|tar --directory=/tmp/initramfs --extract --keep-directory-symlink
 
 		#
@@ -157,23 +163,30 @@ Main() {
 		#
 		# copy modules
 		#
-		mkdir -p /tmp/initramfs/usr/lib/modules/$(KVersion)
-		# rm -fr /tmp/initramfs/usr/lib/modules/$(KVersion)/*
-		for module in "${modules[@]}"; do CopyModule "${module}"; done
-		cp "${args[root]}"/usr/lib/modules/$(KVersion)/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/$(KVersion)/
-		depmod --basedir=/tmp/initramfs --outdir=/tmp/initramfs $(KVersion)
+		rm -fr /tmp/initramfs/usr/lib/modules/$(KVersion)
+		if [[ -z "${args[no-modules]}" ]]; then
+			mkdir -p /tmp/initramfs/usr/lib/modules/$(KVersion)
+			if (( ${#modules[@]} == 0 )); then
+				Print 5 kernel "copying all modules to initramfs"
+				cp -r "${args[root]}"/usr/lib/modules/$(KVersion) /tmp/initramfs/usr/lib/modules/
+			else
+				for module in "${modules[@]}"; do CopyModule "${module}"; done
+				cp "${args[root]}"/usr/lib/modules/$(KVersion)/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/$(KVersion)/
+			fi
+			depmod --basedir=/tmp/initramfs --outdir=/tmp/initramfs $(KVersion)
+		fi
 
 		#
 		# setup the filesystem
 		#
 		mkdir -p /tmp/initramfs/{dev,etc,proc,run,sys,tmp}
-		ln -sf ../usr/lib/os-release /tmp/initramfs/etc/initrd-release
-		ln -sf usr/lib/systemd/systemd /tmp/initramfs/init
-		systemd-sysusers --root=/tmp/initramfs
+
+		#FIXME: move this systemd stuff elsewhere
+		# systemd-sysusers --root=/tmp/initramfs
 		# systemd-tmpfiles --root=/tmp/initramfs --create
 
 		# set root password
-		[[ -n "${args[rootpw]}" ]] && echo "root:${args[rootpw]}" |chpasswd --prefix /tmp/initramfs --encrypted
+		[[ -n "${args[rootpw]}" ]] && { systemd-sysusers --root=/tmp/initramfs; echo "root:${args[rootpw]}" |chpasswd --prefix /tmp/initramfs --encrypted; }
 
 		#
 		# create cpio
@@ -187,24 +200,11 @@ Main() {
 		rm -r /tmp/initramfs
 		# Print 6 kernel "initramfs compressed size is $(du -h "${rootPath}"/efi/initramfs.cpio.zst |cut -f1)"
 	fi
-
-	#
-	# build the bootloader
-	#
-	Print 5 kernel "building the bootloader"
-	mkdir -p "${args[root]}"/efi/EFI/BOOT
-	grub-mkimage --config=/usr/share/grub-internal.cfg --compression=auto --format=x86_64-efi --prefix='(memdisk)' --output="${args[root]}"/efi/EFI/BOOT/BOOTX64.efi \
-		bli part_gpt efi_gop configfile fat search echo linux multiboot2 gzio regexp sleep
-
-	# copy over xen.gz
-	mkdir -p "${args[root]}"/efi/xen
-	cp -L /boot/xen.gz "${args[root]}"/efi/xen/
-	cp /boot/*-uc.bin "${args[root]}"/efi/xen/
 }
 CopyModule() {
 	for module in $(modprobe --dirname="${args[root]}/usr" --set-version="$(KVersion)" --show-depends "$*" |cut -d ' ' -f 2); do
 
-		local modulefile=$(modinfo --basedir="${args[root]}" -k "${args[root]}"/usr/lib/modules/$(KVersion)/vmlinuz --field=filename "${module}")
+		local modulefile=$(modinfo --basedir="${args[root]}" -k "${args[root]}"/efi/vmlinuz --field=filename "${module}")
 		modulefile="${modulefile#${PWD}/${args[root]}/}"
 
 		mkdir -p /tmp/initramfs/"$(dirname $modulefile)"

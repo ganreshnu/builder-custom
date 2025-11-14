@@ -1,4 +1,5 @@
-sys-apps/systemd vanilla -importd dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -pkcs11 -bpf policykit tpm
+sys-libs/glibc -multiarch
+sys-apps/systemd vanilla -boot dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -pkcs11 -bpf policykit tpm -sysv-utils -ukify
 sys-apps/util-linux -cramfs -python
 sys-libs/ncurses -cxx
 sys-apps/kmod -lzma -zlib

@@ -4,7 +4,7 @@ set -euo pipefail
 
 Usage() {
 	cat <<EOD
-Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS] [DIRECTORY...]
+Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS] [DIRECTORY...] [FILE...]
 
 Options:
   --nproc INT                Number of threads to use.
@@ -14,10 +14,12 @@ Options:
                              partition as the layer directories.
   --portage-conf DIRECTORY   Customized files that are copied into
                              /etc/portage/
-  --extra-dir DIRECTORY      Additional files to copy into /usr.
+  --extra-dir DIRECTORY      Additional files to copy into --root.
   --help                     Display this message and exit.
 
-Installs portage packages to the specified root.
+Installs portage packages to the specified root. Directories given as positionals
+are underlying layers. A file in the positionals is read and expanded by line as
+arguments.
 EOD
 }
 Main() {
@@ -87,7 +89,7 @@ Main() {
 		elif [[ -f "${arg}" ]]; then
 			mapfile -t <"${arg}"
 			for item in "${MAPFILE[@]}"; do
-				[[ "${item}" != \#* ]] && emergeArgs+=( "${item}" )
+				[[ "${item::1}" != '#' ]] && emergeArgs+=( "${item}" )
 				done
 		else
 			emergeArgs+=( "${arg}" )
@@ -126,7 +128,7 @@ Main() {
 	# copy extras in
 	#
 	for extra in "${extras[@]}"; do
-		TarCp "${extra}" /overlay/usr
+		TarCp "${extra}" /overlay
 	done
 
 	#
