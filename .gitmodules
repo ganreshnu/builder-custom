@@ -1,0 +1,6 @@
+[submodule "basefs/extra/share/factory/etc/skel/.config/bash"]
+	path = basefs/extra/share/factory/etc/skel/.config/bash
+	url = https://github.com/ganreshnu/config-bash.git
+[submodule "basefs/extra/share/factory/etc/skel/.config/readline"]
+	path = basefs/extra/share/factory/etc/skel/.config/readline
+	url = https://github.com/ganreshnu/config-readline.git

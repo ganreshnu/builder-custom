@@ -1,4 +1,4 @@
-FROM gentoo/stage3:nomultilib-systemd
+FROM docker.io/gentoo/stage3:systemd
 COPY portage /etc/portage
 
 ARG jobs=2
@@ -15,11 +15,10 @@ RUN cd /usr/src/linux; make defconfig && make kernel.config
 RUN emerge --jobs=$jobs --update --newuse --deep @world
 
 ENV PACKAGES="dev-vcs/git app-portage/gentoolkit \
-	sys-boot/grub app-emulation/xen \
+	sys-boot/grub sys-boot/shim app-emulation/xen \
 	sys-kernel/linux-firmware sys-firmware/intel-microcode net-wireless/wireless-regdb \
 	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils sys-fs/mtools sys-fs/btrfs-progs \
-	dev-libs/glib dev-libs/yajl app-arch/lzma sys-power/iasl dev-lang/ocaml dev-lang/go"
-# RUN emerge --pretend ${PACKAGES} && exit 1
+	dev-lang/go dev-util/catalyst app-misc/jq"
 RUN emerge --jobs=$jobs ${PACKAGES}
 
 RUN git -C /usr/share clone --depth=1 https://github.com/square/certstrap.git \
@@ -31,7 +30,12 @@ RUN cpio -i --to-stdout </boot/amd-uc.img kernel/x86/microcode/AuthenticAMD.bin 
 
 # generate locales
 COPY locale.gen /etc/
-RUN locale-gen --update
+# RUN locale-gen
+RUN touch /etc/machine-id
+
+COPY catalyst* /etc/catalyst/
+# COPY catalyst.conf /etc/catalyst/catalyst.conf
+# COPY catalystrc /etc/catalyst/catalystrc
 
 # create the overlay directory
 RUN mkdir /overlay
@@ -42,6 +46,8 @@ COPY initramfs /usr/share/initramfs
 
 COPY verity-cert.config /usr/share/verity-cert.config
 COPY grub-internal.cfg /usr/share/grub-internal.cfg
+COPY loader.conf /boot/loader.conf
+COPY entries.srel /boot/entries.srel
 
 # copy the scripts
 COPY scripts /usr/share/scripts
