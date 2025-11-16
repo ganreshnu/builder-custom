@@ -130,9 +130,9 @@ Main() {
 				mapfile -t <"${arg}"
 				for item in "${MAPFILE[@]}"; do
 					[[ "${item}" != \#* ]] && modules+=( "${item}" )
-					done
-				else
-					modules+=( "${arg}" )
+				done
+			else
+				modules+=( "${arg}" )
 			fi
 		done
 
@@ -151,8 +151,9 @@ Main() {
 			--exclude=usr/share/factory/etc/locale.conf
 			--exclude=usr/share/factory/etc/vconsole.conf
 		)
-		mkdir -p /tmp/initramfs
-		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" etc bin lib lib64 sbin usr init var \
+
+		SetupRoot /tmp/initramfs
+		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" usr init \
 			|tar --directory=/tmp/initramfs --extract --keep-directory-symlink
 
 		#
@@ -173,13 +174,12 @@ Main() {
 				for module in "${modules[@]}"; do CopyModule "${module}"; done
 				cp "${args[root]}"/usr/lib/modules/$(KVersion)/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/$(KVersion)/
 			fi
-			depmod --basedir=/tmp/initramfs --outdir=/tmp/initramfs $(KVersion)
+			depmod --basedir=/tmp/initramfs/usr --outdir=/tmp/initramfs/usr $(KVersion)
 		fi
 
 		#
 		# setup the filesystem
 		#
-		mkdir -p /tmp/initramfs/{dev,etc,proc,run,sys,tmp}
 
 		#FIXME: move this systemd stuff elsewhere
 		# systemd-sysusers --root=/tmp/initramfs

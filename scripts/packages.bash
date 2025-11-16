@@ -13,7 +13,7 @@ Options:
   --workdir DIRECTORY        OverlayFS workdir which must be on the same
                              partition as the layer directories.
   --portage-conf DIRECTORY   Customized files that are copied into
-                             /etc/portage/
+                             /etc/portage/. Can be passed multiple times.
   --extra-dir DIRECTORY      Additional files to copy into --root.
   --help                     Display this message and exit.
 
@@ -28,9 +28,8 @@ Main() {
 		[jobs]=2
 		[root]=
 		[workdir]=
-		[portage-conf]=/var/empty
 	)
-	local argv=() extras=()
+	local argv=() extras=() confs=()
 	while (( $# > 0 )); do
 		case "$1" in
 			--nproc* )
@@ -56,7 +55,7 @@ Main() {
 			--portage-conf* )
 				local value= count=0
 				ExpectArg value count "$@"; shift $count
-				args[portage-conf]="$value"
+				confs+=( "$value" )
 				;;
 			--extra-dir* )
 				local value= count=0
@@ -110,8 +109,11 @@ Main() {
 	#
 	# configure portage
 	#
-	tar --directory=/etc --create --zstd --file=/tmp/portage.tar.zst portage \
-		&& TarCp "${args[portage-conf]}" /etc/portage
+	# back up the portage config
+	tar --directory=/etc --create --zstd --file=/tmp/portage.tar.zst portage
+	for d in "${confs[@]}"; do
+		TarCp "$d" /etc/portage
+	done
 
 	#
 	# execute emerge
