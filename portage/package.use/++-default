@@ -1,0 +1,8 @@
+sys-boot/grub -nls -device-mapper
+sys-apps/help2man nls
+sys-apps/systemd cryptsetup ukify boot
+dev-libs/elfutils -lzma
+sys-devel/binutils multitarget
+sys-apps/util-linux python
+sys-kernel/linux-firmware -compress-zstd
+sys-kernel/vanilla-sources symlink
