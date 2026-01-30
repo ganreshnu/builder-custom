@@ -1,0 +1,4 @@
+sys-boot/grub ~amd64
+sys-apps/systemd ~amd64
+sys-fs/erofs-utils ~amd64
+sys-kernel/vanilla-sources ~amd64

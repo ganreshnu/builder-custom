@@ -153,7 +153,7 @@ Main() {
 		)
 
 		SetupRoot /tmp/initramfs
-		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" usr init \
+		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" usr \
 			|tar --directory=/tmp/initramfs --extract --keep-directory-symlink
 
 		#
@@ -180,7 +180,6 @@ Main() {
 		#
 		# setup the filesystem
 		#
-
 		#FIXME: move this systemd stuff elsewhere
 		# systemd-sysusers --root=/tmp/initramfs
 		# systemd-tmpfiles --root=/tmp/initramfs --create

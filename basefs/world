@@ -1,6 +1,7 @@
-app-shells/bash
 sys-apps/systemd
 sys-apps/kbd
 sys-apps/shadow
-acct-group/mail
-acct-user/mail
+#app-shells/bash
+#sys-apps/coreutils
+#acct-group/mail
+#acct-user/mail

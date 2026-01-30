@@ -1,6 +1,6 @@
-NAME=AverettOS
+NAME=GenericOS-initramfs
 ID=averettos
-PRETTY_NAME="AverettOS Linux"
+PRETTY_NAME="GenericOS initramfs"
 ANSI_COLOR="1;32"
-HOME_URL="https://johnwaller.us/averettos"
+HOME_URL="https://johnwaller.us/genericos-initramfs"
 VERSION_ID="0.1"

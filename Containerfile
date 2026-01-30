@@ -13,14 +13,15 @@ COPY kernel.config /usr/src/linux/arch/x86/configs/
 RUN cd /usr/src/linux; make defconfig && make kernel.config
 
 RUN emerge --jobs=$jobs --update --newuse --deep @world
-
+# sys-boot/grub 
 ENV PACKAGES="dev-vcs/git app-portage/gentoolkit \
-	sys-boot/grub sys-boot/shim app-emulation/xen \
+	app-emulation/xen \
 	sys-kernel/linux-firmware sys-firmware/intel-microcode net-wireless/wireless-regdb \
 	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils sys-fs/mtools sys-fs/btrfs-progs \
-	dev-lang/go dev-util/catalyst app-misc/jq"
+	dev-lang/go app-misc/jq \
+	app-crypt/sbsigntools"
 RUN emerge --jobs=$jobs ${PACKAGES}
-
+# RUN emerge --jobs=$jobs sys-boot/grub sys-boot/shim
 RUN git -C /usr/share clone --depth=1 https://github.com/square/certstrap.git \
 	&& cd /usr/share/certstrap && go build && ln -s /usr/share/certstrap/certstrap /usr/bin/certstrap
 
@@ -33,7 +34,7 @@ COPY locale.gen /etc/
 # RUN locale-gen
 RUN touch /etc/machine-id
 
-COPY catalyst* /etc/catalyst/
+# COPY catalyst* /etc/catalyst/
 # COPY catalyst.conf /etc/catalyst/catalyst.conf
 # COPY catalystrc /etc/catalyst/catalystrc
 

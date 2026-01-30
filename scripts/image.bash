@@ -4,7 +4,7 @@ set -euo pipefail
 
 Usage() {
 	cat <<EOD
-Usage: $(basename ${BASH_SOURCE[0]}) [OPTIONS] [DIRECTORY...]
+Usage: $(basename "${BASH_SOURCE[0]}") [OPTIONS] [DIRECTORY...]
 
 Options:
   --root DIRECTORY           The directory in which to install the emergeArgs.
@@ -20,31 +20,31 @@ EOD
 }
 Main() {
 	local -A args=(
-		[root]=
-		[disk]=
+		[root]=''
+		[disk]=''
 		[seed]=random
-		[locales]=
+		[locales]=''
 	)
 	local argv=()
 	while (( $# > 0 )); do
 		case "$1" in
 			--root* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[root]="$value"
 				;;
 			--disk* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[disk]="$value"
 				;;
 			--seed* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[seed]="$value"
 				;;
 			--locales* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[locales]="$value"
 				;;
@@ -94,18 +94,18 @@ Main() {
 	# mount the overlay
 	#
 	(( ${#lowers[@]} == 0 )) && lowers+=( /var/empty )
-	fuse-overlayfs -o lowerdir=$(Join : "${lowers[@]}") /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
+	fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
 
-	SetupRoot "${args[root]}"
-	local includes=( usr boot )
-	[[ -d /overlay/efi ]] && includes+=( efi )
-	tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" "${includes[@]}" \
-		|tar --directory="${args[root]}" --extract --keep-directory-symlink
+	# SetupRoot "${args[root]}"
+	# local includes=( usr boot )
+	# [[ -d /overlay/efi ]] && includes+=( efi )
+	# tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" "${includes[@]}" \
+	# 	|tar --directory="${args[root]}" --extract --keep-directory-symlink
 
 	#
 	# copy the gcc redis folder
 	#
-	TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/14/ "${args[root]}"/usr/lib64/
+	# TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/14/ "${args[root]}"/usr/lib64/
 
 	# cp /etc/ca-certificates.conf "${args[root]}"/usr/share/factory/etc/
 	# echo 'C /etc/ca-certificates.conf' >"${args[root]}"/usr/lib/tmpfiles.d/ssl.conf
@@ -114,7 +114,7 @@ Main() {
 	#
 	# generate the locales
 	#
-	[[ -n "${args[locales]}" ]] && locale-gen --prefix $(realpath "${args[root]}") --config "${args[locales]}"
+	[[ -n "${args[locales]}" ]] && locale-gen --prefix "$(realpath "${args[root]}")" --config "${args[locales]}"
 
 	# #
 	# # build the bootloader
@@ -144,8 +144,10 @@ Main() {
 		--empty=create --size=auto --split=yes --json=short "${args[disk]}" >"${tempfile}"
 	local -r rootUUID=$(jq -r '.[] | select(.type == "root-x86-64").uuid' "${tempfile}")
 	local -r usrhash=$(jq -r '.[] | select(.type == "usr-x86-64").roothash' "${tempfile}")
+	# cp "${tempfile}" repart.out
 	rm "${tempfile}"
 
+	Print 5 image built image
 	echo "rootUUID:${rootUUID}"
 	echo "usrhash:${usrhash}"
 	# veritysetup dump "${args[disk]/.raw/.usr-x86-64-verity.raw}" >cmd.veritysetup.stdout
@@ -160,15 +162,16 @@ Main() {
 	# local -r microcode=amd-uc.img
 	# local -r microcode=intel-uc.img
 	# local -r microcode=
-	# local cmdlineArgs=(
-	# 	consoleblank=60
-	# 	rw
-	# 	root=PARTUUID="$rootUUID"
-	# 	usrhash="$usrhash"
-	# )
-	# ukify build --linux=/overlay/efi/vmlinuz --cmdline="${cmdlineArgs[*]}" \
-	# 	--os-release=@/overlay/usr/lib/os-release --initrd=/overlay/efi/initramfs.cpio.zst \
-	# 	--output="${args[root]}"/efi/uki.efi
+	local cmdlineArgs=(
+		consoleblank=60
+		rw
+		root=PARTUUID="$rootUUID"
+		usrhash="$usrhash"
+	)
+	ukify build --linux=/overlay/efi/vmlinuz --cmdline="${cmdlineArgs[*]}" \
+		--os-release=@/overlay/usr/lib/os-release --initrd=/overlay/efi/initramfs.cpio.zst \
+		--secureboot-private-key=verity.key --secureboot-certificate=verity.crt \
+		--output="${args[root]}"/efi/uki.efi
 
 	systemd-repart --root="${args[root]}" --seed="${args[seed]}" --include-partitions=esp --split=yes --dry-run=no "${args[disk]}"
 

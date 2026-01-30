@@ -1,17 +1,18 @@
 sys-libs/glibc -multiarch
-sys-apps/systemd vanilla -boot dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -pkcs11 -bpf policykit tpm -sysv-utils -ukify
-sys-apps/util-linux -cramfs -python
+sys-apps/systemd vanilla -boot dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -pkcs11 -bpf policykit tpm -sysv-utils -ukify fido2 idn importd pkcs11 curl lzma homed http -gnutls
+sys-apps/util-linux -cramfs -python cryptsetup
 sys-libs/ncurses -cxx
 sys-apps/kmod -lzma -zlib
 sys-fs/cryptsetup -argon2
 sys-libs/gdbm -berkdb
 sys-libs/pam -filecaps
-sys-auth/pambase -nullok
+sys-auth/pambase -nullok -passwdqc
 dev-libs/libfido2 hidapi
 sys-libs/libseccomp -python
 net-misc/curl gopher -idn
 sys-auth/polkit -introspection
 dev-libs/glib -elf -introspection
 dev-libs/libxml2 -python
+net-libs/gnutls pkcs11
 #sys-apps/coreutils
 #sys-apps/pciutils zlib kmod
