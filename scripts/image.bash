@@ -128,11 +128,11 @@ Main() {
 	# mkdir -p "${args[root]}"/efi/xen
 	# cp -L /boot/xen.gz "${args[root]}"/efi/xen/
 	# cp /boot/*-uc.bin "${args[root]}"/efi/xen/
-	mkdir -p "${args[root]}"/boot/EFI/BOOT
-	mkdir -p "${args[root]}"/boot/loader/entries
-	cp /boot/loader.conf "${args[root]}"/boot/loader/
-	cp /boot/entries.srel "${args[root]}"/boot/loader/
-	cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "${args[root]}"/boot/EFI/BOOT/BOOTX64.EFI
+	# mkdir -p "${args[root]}"/boot/EFI/BOOT
+	# mkdir -p "${args[root]}"/boot/loader/entries
+	# cp /boot/loader.conf "${args[root]}"/boot/loader/
+	# cp /boot/entries.srel "${args[root]}"/boot/loader/
+	# cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "${args[root]}"/boot/EFI/BOOT/BOOTX64.EFI
 	# bootctl --esp-path="${args[root]}"/boot random-seed
 
 	#
