@@ -27,33 +27,33 @@ EOD
 Main() {
 	local -A args=(
 		[nproc]=$(nproc)
-		[certificate]=
-		[rootpw]=
-		[root]=
-		[workdir]=
-		[no-modules]=
+		[certificate]=''
+		[rootpw]=''
+		[root]=''
+		[workdir]=''
+		[no-modules]=''
 	)
 	local argv=()
 	local kconfigs=()
 	while (( $# > 0 )); do
 		case "$1" in
 			--nproc* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[nproc]="$value"
 				;;
 			--kconfig* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				kconfigs+=( "$value" )
 				;;
 			--certificate* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[certificate]="$value"
 				;;
 			--rootpw* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[rootpw]="$value"
 				;;
@@ -62,12 +62,12 @@ Main() {
 				shift
 				;;
 			--root* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[root]="$value"
 				;;
 			--workdir* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[workdir]="$value"
 				;;
@@ -90,7 +90,7 @@ Main() {
 	[[ -z "${args[root]}" ]] && { >&2 Print 1 kernel "missing required option --root"; return 1; }
 	[[ -z "${args[workdir]}" ]] && { >&2 Print 1 kernel "missing required option --workdir"; return 1; }
 
-	local -r rootPath="$(realpath ${args[root]})"
+	local -r rootPath="$(realpath "${args[root]}")"
 
 	#
 	# copy verity certificate where the kernel can get it
@@ -141,7 +141,7 @@ Main() {
 		#
 		# mount the overlay
 		#
-		fuse-overlayfs -o lowerdir=$(Join : "${lowers[@]}"),upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
+		fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")",upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
 
 		#
 		# copy the base files
@@ -164,17 +164,17 @@ Main() {
 		#
 		# copy modules
 		#
-		rm -fr /tmp/initramfs/usr/lib/modules/$(KVersion)
+		rm -fr /tmp/initramfs/usr/lib/modules/"$(KVersion)"
 		if [[ -z "${args[no-modules]}" ]]; then
-			mkdir -p /tmp/initramfs/usr/lib/modules/$(KVersion)
+			mkdir -p /tmp/initramfs/usr/lib/modules/"$(KVersion)"
 			if (( ${#modules[@]} == 0 )); then
 				Print 5 kernel "copying all modules to initramfs"
-				cp -r "${args[root]}"/usr/lib/modules/$(KVersion) /tmp/initramfs/usr/lib/modules/
+				cp -r "${args[root]}"/usr/lib/modules/"$(KVersion)" /tmp/initramfs/usr/lib/modules/
 			else
 				for module in "${modules[@]}"; do CopyModule "${module}"; done
-				cp "${args[root]}"/usr/lib/modules/$(KVersion)/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/$(KVersion)/
+				cp "${args[root]}"/usr/lib/modules/"$(KVersion)"/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/"$(KVersion)"/
 			fi
-			depmod --basedir=/tmp/initramfs/usr --outdir=/tmp/initramfs/usr $(KVersion)
+			depmod --basedir=/tmp/initramfs/usr --outdir=/tmp/initramfs/usr "$(KVersion)"
 		fi
 
 		#
