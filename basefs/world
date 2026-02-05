@@ -1,6 +1,9 @@
 sys-apps/systemd
 sys-apps/kbd
 sys-apps/shadow
+sys-fs/btrfs-progs
+sys-fs/erofs-utils
+sys-fs/dosfstools
 #app-shells/bash
 #sys-apps/coreutils
 #acct-group/mail

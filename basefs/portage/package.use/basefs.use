@@ -14,5 +14,7 @@ sys-auth/polkit -introspection
 dev-libs/glib -elf -introspection
 dev-libs/libxml2 -python
 net-libs/gnutls pkcs11
+sys-fs/btrfs-progs -convert -man
+sys-fs/erofs-utils -lz4 -lzma -zlib
 #sys-apps/coreutils
 #sys-apps/pciutils zlib kmod
