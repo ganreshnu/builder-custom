@@ -99,7 +99,7 @@ Main() {
 	# mount the overlay
 	#
 	(( ${#lowers[@]} == 0 )) && lowers+=( /var/empty )
-	fuse-overlayfs -o lowerdir=$(Join : "${lowers[@]}"),upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
+	fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")",upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
 
 	#
 	# setup the rootfs
