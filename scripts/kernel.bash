@@ -87,6 +87,9 @@ Main() {
 	argv+=( "$@" )
 	set - "${argv[@]}" && unset -v argv
 
+	#
+	# validate arguments and set variables
+	#
 	[[ -z "${args[root]}" ]] && { >&2 Print 1 kernel "missing required option --root"; return 1; }
 	[[ -z "${args[workdir]}" ]] && { >&2 Print 1 kernel "missing required option --workdir"; return 1; }
 
@@ -100,7 +103,7 @@ Main() {
 	#
 	# build the kernel
 	#
-	if [[ ! -f "${args[root]}"/efi/kconfig.zst ]]; then
+	if [[ ! -f "${args[root]}"/boot/kconfig.zst ]]; then
 		Print 5 kernel "building the kernel"
 		# configure the kernel sources
 		/usr/share/scripts/kconfig.bash "${kconfigs[@]}"
@@ -110,18 +113,18 @@ Main() {
 		# Print 5 kernel "built kernel"
 		[[ -d "${rootPath}"/usr/lib/modules/"$(KVersion)" ]] && rm -r "${rootPath}"/usr/lib/modules/"$(KVersion)"
 		make INSTALL_MOD_PATH="${rootPath}"/usr INSTALL_MOD_STRIP=1 modules_install
-		make INSTALL_PATH="${rootPath}"/efi install
+		make INSTALL_PATH="${rootPath}"/boot install
 		# Print 5 kernel "installed modules and kernel to ${args[root]}"
-		cp /boot/*-uc.img "${rootPath}"/efi/
-		zstd --quiet .config -o "${rootPath}"/efi/kconfig.zst
-		# Print 5 kernel "saved kernel configuration to ${args[root]}/efi/kconfig.zst"
+		cp /boot/*-uc.img "${rootPath}"/boot/
+		zstd --quiet .config -o "${rootPath}"/boot/kconfig.zst
+		# Print 5 kernel "saved kernel configuration to ${args[root]}/boot/kconfig.zst"
 		popd >/dev/null #/usr/src/linux
 	fi
 
 	#
 	# build the initramfs
 	#
-	if (( $# > 0 )) && [[ ! -f "${args[root]}"/efi/initramfs.cpio.zst ]]; then
+	if (( $# > 0 )) && [[ ! -f "${args[root]}"/boot/initramfs.cpio.zst ]]; then
 		local lowers=() modules=()
 		for arg in "$@"; do
 			if [[ -d "${arg}" ]]; then
@@ -192,18 +195,18 @@ Main() {
 		#
 		Print 6 kernel "initramfs uncompressed size is $(du -sh /tmp/initramfs |cut -f1)"
 		pushd /usr/src/linux >/dev/null
-		mkdir -p "${rootPath}"/efi
+		mkdir -p "${rootPath}"/boot
 		usr/gen_initramfs.sh -o /dev/stdout /tmp/initramfs \
-			| zstd --compress --stdout > "${rootPath}"/efi/initramfs.cpio.zst
+			| zstd --compress --stdout > "${rootPath}"/boot/initramfs.cpio.zst
 		popd >/dev/null #/usr/src/linux/
 		rm -r /tmp/initramfs
-		# Print 6 kernel "initramfs compressed size is $(du -h "${rootPath}"/efi/initramfs.cpio.zst |cut -f1)"
+		# Print 6 kernel "initramfs compressed size is $(du -h "${rootPath}"/boot/initramfs.cpio.zst |cut -f1)"
 	fi
 }
 CopyModule() {
 	for module in $(modprobe --dirname="${args[root]}/usr" --set-version="$(KVersion)" --show-depends "$*" |cut -d ' ' -f 2); do
 
-		local modulefile=$(modinfo --basedir="${args[root]}" -k "${args[root]}"/efi/vmlinuz --field=filename "${module}")
+		local modulefile=$(modinfo --basedir="${args[root]}" -k "${args[root]}"/boot/vmlinuz --field=filename "${module}")
 		modulefile="${modulefile#${PWD}/${args[root]}/}"
 
 		mkdir -p /tmp/initramfs/"$(dirname $modulefile)"
