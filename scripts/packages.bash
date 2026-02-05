@@ -110,7 +110,7 @@ Main() {
 	# configure portage
 	#
 	# back up the portage config
-	tar --directory=/etc --create --zstd --file=/tmp/portage.tar.zst portage
+	# tar --directory=/etc --create --zstd --file=/tmp/portage.tar.zst portage
 	for d in "${confs[@]}"; do
 		TarCp "$d" /etc/portage
 	done
