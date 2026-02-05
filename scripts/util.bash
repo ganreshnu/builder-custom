@@ -35,6 +35,8 @@ KVersion() {
 	make --directory=/usr/src/linux --quiet kernelversion
 }
 TarCp() {
-	tar --directory="$1" --create --preserve-permissions . |
-		tar --directory="$2" --extract --keep-directory-symlink
+	local f="$1"; shift
+	local t="$1"; shift
+	tar --directory="$f" --create --preserve-permissions "$@" . |
+		tar --directory="$t" --extract --keep-directory-symlink
 }
