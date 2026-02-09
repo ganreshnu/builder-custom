@@ -173,11 +173,11 @@ Main() {
 	# local -r microcode=
 	# 		root=PARTUUID="$rootUUID"
 	kernel_args+=( usrhash="$usrhash")
-	mkdir -p /overlay/efi
+	mkdir -p /overlay/efi/EFI/BOOT
 	ukify build --linux=/overlay/boot/vmlinuz --cmdline="${kernel_args[*]}" \
 		--os-release=@/overlay/usr/lib/os-release --initrd=/overlay/boot/initramfs.cpio.zst \
 		--secureboot-private-key=verity.key --secureboot-certificate=verity.crt \
-		--output=/overlay/efi/uki.efi
+		--output=/overlay/efi/EFI/BOOT/BOOTX64.EFI
 
 	Print 5 image 'built uki'
 	# builder -- ukify --cmdline='consoleblank=60 systemd.hostname=installer rw systemd.set_credential=passwd.hashed-password.root: rdinit=/usr/lib/systemd/systemd' --microcode=build/kernel/efi/intel-uc.img

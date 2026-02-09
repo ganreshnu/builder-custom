@@ -125,7 +125,7 @@ Main() {
 	# build the initramfs
 	#
 	if (( $# > 0 )) && [[ ! -f "${args[root]}"/boot/initramfs.cpio.zst ]]; then
-		local lowers=() modules=()
+		local lowers=( "${args[root]}" ) modules=()
 		for arg in "$@"; do
 			if [[ -d "${arg}" ]]; then
 				lowers+=( "${arg}" )
@@ -154,9 +154,11 @@ Main() {
 			--exclude=usr/share/factory/etc/locale.conf
 			--exclude=usr/share/factory/etc/vconsole.conf
 		)
+		local includes=( usr )
+		[[ -f /overlay/etc/initrd-release ]] && includes+=( etc/initrd-release ) || true
 
 		SetupRoot /tmp/initramfs
-		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" usr \
+		tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" "${includes[@]}" \
 			|tar --directory=/tmp/initramfs --extract --keep-directory-symlink
 
 		#
@@ -167,18 +169,18 @@ Main() {
 		#
 		# copy modules
 		#
-		rm -fr /tmp/initramfs/usr/lib/modules/"$(KVersion)"
-		if [[ -z "${args[no-modules]}" ]]; then
-			mkdir -p /tmp/initramfs/usr/lib/modules/"$(KVersion)"
-			if (( ${#modules[@]} == 0 )); then
-				Print 5 kernel "copying all modules to initramfs"
-				cp -r "${args[root]}"/usr/lib/modules/"$(KVersion)" /tmp/initramfs/usr/lib/modules/
-			else
-				for module in "${modules[@]}"; do CopyModule "${module}"; done
-				cp "${args[root]}"/usr/lib/modules/"$(KVersion)"/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/"$(KVersion)"/
-			fi
-			depmod --basedir=/tmp/initramfs/usr --outdir=/tmp/initramfs/usr "$(KVersion)"
-		fi
+		# rm -fr /tmp/initramfs/usr/lib/modules/"$(KVersion)"
+		# if [[ -z "${args[no-modules]}" ]]; then
+		# 	mkdir -p /tmp/initramfs/usr/lib/modules/"$(KVersion)"
+		# 	if (( ${#modules[@]} == 0 )); then
+		# 		Print 5 kernel "copying all modules to initramfs"
+		# 		cp -r "${args[root]}"/usr/lib/modules/"$(KVersion)" /tmp/initramfs/usr/lib/modules/
+		# 	else
+		# 		for module in "${modules[@]}"; do CopyModule "${module}"; done
+		# 		cp "${args[root]}"/usr/lib/modules/"$(KVersion)"/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/"$(KVersion)"/
+		# 	fi
+		# 	depmod --basedir=/tmp/initramfs/usr --outdir=/tmp/initramfs/usr "$(KVersion)"
+		# fi
 
 		#
 		# setup the filesystem
