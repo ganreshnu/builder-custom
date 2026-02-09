@@ -7,13 +7,15 @@ Usage() {
 Usage: $(basename "${BASH_SOURCE[0]}") [OPTIONS] [DIRECTORY...]
 
 Options:
-  --root DIRECTORY           The directory in which to install the emergeArgs.
-  --disk FILE|BLOCKDEV       A filename or block device on which to write the
-                             generated image.
-  --seed UUID                A seed to use for reproducable partition tables.
-  --locales FILE             A locale.gen formatted file with the locales to
-                             build.
-  --help                     Display this message and exit.
+  --root        DIRECTORY      The directory in which to install the emergeArgs.
+  --workdir     DIRECTORY      OverlayFS workdir which must be on the same
+                               partition as the layer directories.
+  --disk        FILE|BLOCKDEV  A filename or block device on which to write the
+                               generated image.
+  --seed        UUID           A seed to use for reproducable partition tables.
+  --kernel-arg  STRING         Kernel command line argument(s). Can be passed
+                               multiple times.
+  --help                       Display this message and exit.
 
 Creates a pruned image of the composite directories.
 EOD
@@ -21,17 +23,26 @@ EOD
 Main() {
 	local -A args=(
 		[root]=''
+		[workdir]=''
 		[disk]=''
 		[seed]=random
-		[locales]=''
 	)
 	local argv=()
+	local kernel_args=(
+		consoleblank=60
+		rw rdinit=/usr/lib/systemd/systemd
+	)
 	while (( $# > 0 )); do
 		case "$1" in
 			--root* )
 				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[root]="$value"
+				;;
+			--workdir* )
+				local value='' count=0
+				ExpectArg value count "$@"; shift $count
+				args[workdir]="$value"
 				;;
 			--disk* )
 				local value='' count=0
@@ -43,10 +54,10 @@ Main() {
 				ExpectArg value count "$@"; shift $count
 				args[seed]="$value"
 				;;
-			--locales* )
+			--kernel-arg* )
 				local value='' count=0
 				ExpectArg value count "$@"; shift $count
-				args[locales]="$value"
+				kernel_args+=( "$value" )
 				;;
 			--help )
 				Usage
@@ -65,6 +76,7 @@ Main() {
 	set - "${argv[@]}" && unset -v argv
 
 	[[ -z "${args[root]}" ]] && { >&2 Print 1 packages "missing required option --root"; return 1; }
+	[[ -z "${args[workdir]}" ]] && { >&2 Print 1 packages "missing required option --workdir"; return 1; }
 
 	local lowers=()
 	local excludes=(
@@ -74,11 +86,13 @@ Main() {
 		--exclude=usr/share/factory/etc/locale.conf
 		--exclude=usr/share/factory/etc/vconsole.conf
 	)
-	local repartArgs=( --exclude-partitions=swap )
+	local repartArgs=()
+	# local repartArgs=( --exclude-partitions=swap )
 	for arg in "$@"; do
 		if [[ -d "${arg}" ]]; then
 			lowers+=( "${arg}" )
 		elif [[ -f "${arg}" ]]; then
+			# file of excludes
 			mapfile -t <"${arg}"
 			for item in "${MAPFILE[@]}"; do
 				[[ "${item}" != \#* ]] && excludes+=( --exclude="${item}" )
@@ -94,18 +108,13 @@ Main() {
 	# mount the overlay
 	#
 	(( ${#lowers[@]} == 0 )) && lowers+=( /var/empty )
-	fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
+	fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")",upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
 
 	# SetupRoot "${args[root]}"
 	# local includes=( usr boot )
 	# [[ -d /overlay/efi ]] && includes+=( efi )
 	# tar --directory=/overlay --create --preserve-permissions "${excludes[@]}" "${includes[@]}" \
 	# 	|tar --directory="${args[root]}" --extract --keep-directory-symlink
-
-	#
-	# copy the gcc redis folder
-	#
-	# TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/14/ "${args[root]}"/usr/lib64/
 
 	# cp /etc/ca-certificates.conf "${args[root]}"/usr/share/factory/etc/
 	# echo 'C /etc/ca-certificates.conf' >"${args[root]}"/usr/lib/tmpfiles.d/ssl.conf
@@ -114,7 +123,7 @@ Main() {
 	#
 	# generate the locales
 	#
-	[[ -n "${args[locales]}" ]] && locale-gen --prefix "$(realpath "${args[root]}")" --config "${args[locales]}"
+	# [[ -n "${args[locales]}" ]] && locale-gen --prefix /overlay --config "${args[locales]}"
 
 	# #
 	# # build the bootloader
@@ -139,16 +148,16 @@ Main() {
 	# build the diskimage
 	#
 	local -r tempfile=$(mktemp)
-	[[ -n "${args[disk]}" ]] && systemd-repart --root="${args[root]}" --seed="${args[seed]}" "${repartArgs[@]}" \
-		--defer-partitions=esp \
+	[[ -n "${args[disk]}" ]] && systemd-repart --root=/overlay --seed="${args[seed]}" "${repartArgs[@]}" \
+		--defer-partitions=esp --definitions=/usr/lib/repart.d \
 		--empty=create --size=auto --split=yes --json=short "${args[disk]}" >"${tempfile}"
-	local -r rootUUID=$(jq -r '.[] | select(.type == "root-x86-64").uuid' "${tempfile}")
+	# local -r rootUUID=$(jq -r '.[] | select(.type == "root-x86-64").uuid' "${tempfile}")
 	local -r usrhash=$(jq -r '.[] | select(.type == "usr-x86-64").roothash' "${tempfile}")
 	# cp "${tempfile}" repart.out
 	rm "${tempfile}"
 
-	Print 5 image built image
-	echo "rootUUID:${rootUUID}"
+	Print 5 image 'built image'
+	# echo "rootUUID:${rootUUID}"
 	echo "usrhash:${usrhash}"
 	# veritysetup dump "${args[disk]/.raw/.usr-x86-64-verity.raw}" >cmd.veritysetup.stdout
 	# local -r dataBlocks=$(awk '/^Data blocks/ {print $NF}' cmd.veritysetup.stdout)
@@ -162,18 +171,19 @@ Main() {
 	# local -r microcode=amd-uc.img
 	# local -r microcode=intel-uc.img
 	# local -r microcode=
-	local cmdlineArgs=(
-		consoleblank=60
-		rw
-		root=PARTUUID="$rootUUID"
-		usrhash="$usrhash"
-	)
-	ukify build --linux=/overlay/efi/vmlinuz --cmdline="${cmdlineArgs[*]}" \
-		--os-release=@/overlay/usr/lib/os-release --initrd=/overlay/efi/initramfs.cpio.zst \
+	# 		root=PARTUUID="$rootUUID"
+	kernel_args+=( usrhash="$usrhash")
+	mkdir -p /overlay/efi
+	ukify build --linux=/overlay/boot/vmlinuz --cmdline="${kernel_args[*]}" \
+		--os-release=@/overlay/usr/lib/os-release --initrd=/overlay/boot/initramfs.cpio.zst \
 		--secureboot-private-key=verity.key --secureboot-certificate=verity.crt \
-		--output="${args[root]}"/efi/uki.efi
+		--output=/overlay/efi/uki.efi
 
-	systemd-repart --root="${args[root]}" --seed="${args[seed]}" --include-partitions=esp --split=yes --dry-run=no "${args[disk]}"
+	Print 5 image 'built uki'
+	# builder -- ukify --cmdline='consoleblank=60 systemd.hostname=installer rw systemd.set_credential=passwd.hashed-password.root: rdinit=/usr/lib/systemd/systemd' --microcode=build/kernel/efi/intel-uc.img
+
+	Print 5 image 'systemd-repart 2nd run'
+	systemd-repart --root=/overlay --seed="${args[seed]}" --include-partitions=esp --definitions=/usr/lib/repart.d --split=yes --dry-run=no "${args[disk]}"
 
 	#
 	# unmount the overlay

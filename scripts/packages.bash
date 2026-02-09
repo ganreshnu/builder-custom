@@ -26,41 +26,47 @@ Main() {
 	local -A args=(
 		[nproc]=$(nproc)
 		[jobs]=2
-		[root]=
-		[workdir]=
+		[root]=''
+		[workdir]=''
+		[locales]='/overlay/etc/locale.gen'
 	)
 	local argv=() extras=() confs=()
 	while (( $# > 0 )); do
 		case "$1" in
 			--nproc* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[nproc]="$value"
 				;;
 			--jobs* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[jobs]="$value"
 				;;
 			--root* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[root]="$value"
 				;;
 			--workdir* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				args[workdir]="$value"
 				;;
 			--portage-conf* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				confs+=( "$value" )
 				;;
 			--extra-dir* )
-				local value= count=0
+				local value='' count=0
 				ExpectArg value count "$@"; shift $count
 				extras+=( "$value" )
+				;;
+			--locales* )
+				local value='' count=0
+				ExpectArg value count "$@"; shift $count
+				args[locales]="$value"
 				;;
 			--help )
 				Usage
@@ -110,7 +116,7 @@ Main() {
 	# configure portage
 	#
 	# back up the portage config
-	# tar --directory=/etc --create --zstd --file=/tmp/portage.tar.zst portage
+	tar --directory=/etc --create --zstd --file=/tmp/portage.tar.zst portage
 	for d in "${confs[@]}"; do
 		TarCp "$d" /etc/portage
 	done
@@ -120,6 +126,14 @@ Main() {
 	#
 	MAKEOPTS="-j$(( ${args[nproc]} / ${args[jobs]} ))" KERNEL_DIR=/usr/src/linux \
 		emerge --root=/overlay --jobs=${args[jobs]} "${emergeArgs[@]}"
+
+	#
+	# copy the gcc redis folder
+	#
+	if [[ ! -d /overlay/usr/lib/gcc/x86_64-pc-linux-gnu ]]; then
+		mkdir -p /overlay/usr/lib/gcc/x86_64-pc-linux-gnu
+		TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/ /overlay/usr/lib/gcc/x86_64-pc-linux-gnu/
+	fi
 
 	#
 	# restore portage configuration
@@ -132,6 +146,11 @@ Main() {
 	for extra in "${extras[@]}"; do
 		TarCp "${extra}" /overlay
 	done
+
+	#
+	# generate the locales
+	#
+	[[ -f "${args[locales]}" ]] && locale-gen --prefix /overlay --config "${args[locales]}" --update || true
 
 	#
 	# unmount the overlay

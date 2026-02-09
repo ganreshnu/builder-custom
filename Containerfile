@@ -49,6 +49,7 @@ COPY verity-cert.config /usr/share/verity-cert.config
 COPY grub-internal.cfg /usr/share/grub-internal.cfg
 COPY loader.conf /boot/loader.conf
 COPY entries.srel /boot/entries.srel
+COPY repart.d /usr/lib/repart.d
 
 # copy the scripts
 COPY scripts /usr/share/scripts
