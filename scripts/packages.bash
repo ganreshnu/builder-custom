@@ -130,10 +130,10 @@ Main() {
 	#
 	# copy the gcc redis folder
 	#
-	if [[ ! -d /overlay/usr/lib/gcc/x86_64-pc-linux-gnu ]]; then
-		mkdir -p /overlay/usr/lib/gcc/x86_64-pc-linux-gnu
-		TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/ /overlay/usr/lib/gcc/x86_64-pc-linux-gnu/
-	fi
+	# if [[ ! -d /overlay/usr/lib/gcc/x86_64-pc-linux-gnu ]]; then
+	# 	mkdir -p /overlay/usr/lib/gcc/x86_64-pc-linux-gnu
+	# 	TarCp /usr/lib/gcc/x86_64-pc-linux-gnu/ /overlay/usr/lib/gcc/x86_64-pc-linux-gnu/
+	# fi
 
 	#
 	# restore portage configuration
@@ -150,7 +150,7 @@ Main() {
 	#
 	# generate the locales
 	#
-	[[ -f "${args[locales]}" ]] && locale-gen --prefix /overlay --config "${args[locales]}" --update || true
+	[[ -f "${args[locales]}" ]] && locale-gen --prefix /overlay --config "${args[locales]}" || true
 
 	#
 	# unmount the overlay

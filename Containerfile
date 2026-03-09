@@ -1,11 +1,14 @@
 FROM docker.io/gentoo/stage3:systemd
 COPY portage /etc/portage
+# RUN emaint sync -a
 
 ARG jobs=2
 #
 # install the kernel sources
 #
-RUN emerge --jobs=$jobs sys-kernel/vanilla-sources
+# RUN emerge --jobs=$jobs =sys-kernel/vanilla-sources-6.18.10
+RUN emerge --jobs=$jobs sys-kernel/vanilla-sources sys-libs/binutils-libs
+# RUN emerge --jobs=$jobs sys-kernel/gentoo-sources
 # make the initramfs builder
 RUN cd /usr/src/linux && make -C usr gen_init_cpio
 # copy in kernel.config
@@ -19,7 +22,7 @@ ENV PACKAGES="dev-vcs/git app-portage/gentoolkit \
 	sys-kernel/linux-firmware sys-firmware/intel-microcode net-wireless/wireless-regdb \
 	sys-fs/dosfstools sys-fs/fuse-overlayfs sys-fs/erofs-utils sys-fs/mtools sys-fs/btrfs-progs \
 	dev-lang/go app-misc/jq \
-	app-crypt/sbsigntools"
+	app-crypt/sbsigntools dev-build/cmake"
 RUN emerge --jobs=$jobs ${PACKAGES}
 # RUN emerge --jobs=$jobs sys-boot/grub sys-boot/shim
 RUN git -C /usr/share clone --depth=1 https://github.com/square/certstrap.git \

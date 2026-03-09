@@ -1,9 +1,5 @@
 sys-apps/systemd
 sys-apps/kbd
+app-shells/bash
 sys-apps/shadow
-sys-fs/btrfs-progs
 sys-fs/erofs-utils
-sys-fs/dosfstools
-#app-shells/bash
-#sys-apps/coreutils
-#sys-apps/pciutils

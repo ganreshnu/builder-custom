@@ -1,0 +1,4 @@
+post_src_install() {
+	elog "removing locale and keyboard factory configuration"
+	rm "${ED}"/usr/share/factory/etc/{locale,vconsole}.conf || die
+}

@@ -1,20 +1,21 @@
-sys-libs/glibc -multiarch
-sys-apps/systemd vanilla -boot dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -pkcs11 -bpf policykit tpm -sysv-utils -ukify fido2 idn importd pkcs11 curl lzma homed http -gnutls
-sys-apps/util-linux -cramfs -python cryptsetup
-sys-libs/ncurses -cxx
+*/* -pam -cxx
+sys-apps/systemd vanilla -boot dns-over-tls -elfutils -gcrypt -kernel-install -lz4 -pkcs11 -bpf policykit tpm -sysv-utils -ukify fido2 idn importd pkcs11 curl lzma -homed -http -gnutls
+sys-apps/util-linux -cramfs -python cryptsetup -su -suid -logger -hardlink
 sys-apps/kmod -lzma -zlib
 sys-fs/cryptsetup -argon2
-sys-libs/gdbm -berkdb
-sys-libs/pam -filecaps
-sys-auth/pambase -nullok -passwdqc
 dev-libs/libfido2 hidapi
 sys-libs/libseccomp -python
-net-misc/curl gopher -idn
+net-misc/curl gopher idn
 sys-auth/polkit -introspection
 dev-libs/glib -elf -introspection
 dev-libs/libxml2 -python
-net-libs/gnutls pkcs11
+app-arch/xz-utils -extra-filters
+app-arch/zstd -zlib -lzma
+sys-fs/erofs-utils lz4 -lzma -zlib -zstd
 sys-fs/btrfs-progs -convert -man
-sys-fs/erofs-utils -lz4 -lzma -zlib
+sys-apps/kbd -zlib -bzip2
+sys-apps/miscfiles minimal
+#sys-apps/man-db -manpager
+#sys-libs/glibc -multiarch
 #sys-apps/coreutils
 #sys-apps/pciutils zlib kmod

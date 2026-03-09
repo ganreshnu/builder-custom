@@ -93,12 +93,14 @@ Main() {
 	[[ -z "${args[root]}" ]] && { >&2 Print 1 kernel "missing required option --root"; return 1; }
 	[[ -z "${args[workdir]}" ]] && { >&2 Print 1 kernel "missing required option --workdir"; return 1; }
 
-	local -r rootPath="$(realpath "${args[root]}")"
 
 	#
 	# copy verity certificate where the kernel can get it
 	#
 	[[ -f "${args[certificate]}" ]] && { kconfigs+=( /usr/share/verity-cert.config ); cp "${args[certificate]}" /tmp/system.pem; }
+
+	# get the absolute path for the root fs directory
+	local -r rootPath="$(realpath "${args[root]}")"
 
 	#
 	# build the kernel
@@ -109,14 +111,15 @@ Main() {
 		/usr/share/scripts/kconfig.bash "${kconfigs[@]}"
 		# build and install the kernel
 		pushd /usr/src/linux >/dev/null
+		# C_INCLUDE_PATH="/usr/lib64/binutils/x86_64-pc-linux-gnu/2.45.1/include" make -j"${args[nproc]}" --quiet
 		make -j"${args[nproc]}" --quiet
 		# Print 5 kernel "built kernel"
-		[[ -d "${rootPath}"/usr/lib/modules/"$(KVersion)" ]] && rm -r "${rootPath}"/usr/lib/modules/"$(KVersion)"
-		make INSTALL_MOD_PATH="${rootPath}"/usr INSTALL_MOD_STRIP=1 modules_install
-		make INSTALL_PATH="${rootPath}"/boot install
+		[[ -d "$rootPath"/usr/lib/modules/"$(KVersion)" ]] && rm -r "$rootPath"/usr/lib/modules/"$(KVersion)"
+		make INSTALL_MOD_PATH="$rootPath"/usr INSTALL_MOD_STRIP=1 modules_install
+		make INSTALL_PATH="$rootPath"/boot install
 		# Print 5 kernel "installed modules and kernel to ${args[root]}"
-		cp /boot/*-uc.img "${rootPath}"/boot/
-		zstd --quiet .config -o "${rootPath}"/boot/kconfig.zst
+		cp /boot/*-uc.img "$rootPath"/boot/
+		zstd --quiet .config -o "$rootPath"/boot/kconfig.zst
 		# Print 5 kernel "saved kernel configuration to ${args[root]}/boot/kconfig.zst"
 		popd >/dev/null #/usr/src/linux
 	fi
@@ -125,17 +128,17 @@ Main() {
 	# build the initramfs
 	#
 	if (( $# > 0 )) && [[ ! -f "${args[root]}"/boot/initramfs.cpio.zst ]]; then
-		local lowers=( "${args[root]}" ) modules=()
+		local lowers=()
 		for arg in "$@"; do
 			if [[ -d "${arg}" ]]; then
 				lowers+=( "${arg}" )
 			elif [[ -f "${arg}" ]]; then
 				mapfile -t <"${arg}"
 				for item in "${MAPFILE[@]}"; do
-					[[ "${item}" != \#* ]] && modules+=( "${item}" )
+					[[ "${item}" != \#* ]] && lowers+=( "${item}" )
 				done
 			else
-				modules+=( "${arg}" )
+				>&2 Print 1 kernel "unknown option ${arg}"; return 1
 			fi
 		done
 
@@ -144,15 +147,15 @@ Main() {
 		#
 		# mount the overlay
 		#
-		fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")",upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 packages "overlay mount failed"; return 1; }
+		(( ${#lowers[@]} == 0 )) && lowers+=( /var/empty )
+		fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")",upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 kernel "overlay mount failed"; return 1; }
 
 		#
 		# copy the base files
 		#
 		local -r excludes=(
 			--exclude=usr/lib/systemd/system-environment-generators/10-gentoo-path
-			--exclude=usr/share/factory/etc/locale.conf
-			--exclude=usr/share/factory/etc/vconsole.conf
+			--exclude=usr/share/factory/etc/pam.d
 		)
 		local includes=( usr )
 		[[ -f /overlay/etc/initrd-release ]] && includes+=( etc/initrd-release ) || true
@@ -167,53 +170,53 @@ Main() {
 		fusermount3 -u /overlay
 
 		#
-		# copy modules
-		#
-		# rm -fr /tmp/initramfs/usr/lib/modules/"$(KVersion)"
-		# if [[ -z "${args[no-modules]}" ]]; then
-		# 	mkdir -p /tmp/initramfs/usr/lib/modules/"$(KVersion)"
-		# 	if (( ${#modules[@]} == 0 )); then
-		# 		Print 5 kernel "copying all modules to initramfs"
-		# 		cp -r "${args[root]}"/usr/lib/modules/"$(KVersion)" /tmp/initramfs/usr/lib/modules/
-		# 	else
-		# 		for module in "${modules[@]}"; do CopyModule "${module}"; done
-		# 		cp "${args[root]}"/usr/lib/modules/"$(KVersion)"/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/"$(KVersion)"/
-		# 	fi
-		# 	depmod --basedir=/tmp/initramfs/usr --outdir=/tmp/initramfs/usr "$(KVersion)"
-		# fi
-
-		#
 		# setup the filesystem
 		#
-		#FIXME: move this systemd stuff elsewhere
-		# systemd-sysusers --root=/tmp/initramfs
-		# systemd-tmpfiles --root=/tmp/initramfs --create
+		systemd-sysusers --root=/tmp/initramfs
+		# systemd-tmpfiles --root=/tmp/initramfs --create --boot
+		# rm -r /tmp/initramfs/tmp && mkdir /tmp/initramfs/tmp
 
 		# set root password
-		[[ -n "${args[rootpw]}" ]] && { systemd-sysusers --root=/tmp/initramfs; echo "root:${args[rootpw]}" |chpasswd --prefix /tmp/initramfs --encrypted; }
+		[[ -n "${args[rootpw]}" ]] && { echo "root:${args[rootpw]}" |chpasswd --prefix /tmp/initramfs --encrypted; }
 
 		#
 		# create cpio
 		#
 		Print 6 kernel "initramfs uncompressed size is $(du -sh /tmp/initramfs |cut -f1)"
 		pushd /usr/src/linux >/dev/null
-		mkdir -p "${rootPath}"/boot
+		mkdir -p "$rootPath"/boot
 		usr/gen_initramfs.sh -o /dev/stdout /tmp/initramfs \
-			| zstd --compress --stdout > "${rootPath}"/boot/initramfs.cpio.zst
+			| zstd --compress --stdout > "$rootPath"/boot/initramfs.cpio.zst
 		popd >/dev/null #/usr/src/linux/
 		rm -r /tmp/initramfs
-		# Print 6 kernel "initramfs compressed size is $(du -h "${rootPath}"/boot/initramfs.cpio.zst |cut -f1)"
+		Print 6 kernel "initramfs compressed size is $(du -h "${args[root]}"/boot/initramfs.cpio.zst |cut -f1)"
 	fi
 }
-CopyModule() {
-	for module in $(modprobe --dirname="${args[root]}/usr" --set-version="$(KVersion)" --show-depends "$*" |cut -d ' ' -f 2); do
+# CopyModule() {
+# 	for module in $(modprobe --dirname="${args[root]}/usr" --set-version="$(KVersion)" --show-depends "$*" |cut -d ' ' -f 2); do
+#
+# 		local modulefile=$(modinfo --basedir="${args[root]}" -k "${args[root]}"/boot/vmlinuz --field=filename "${module}")
+# 		modulefile="${modulefile#${PWD}/${args[root]}/}"
+#
+# 		mkdir -p /tmp/initramfs/"$(dirname $modulefile)"
+# 		cp "${args[root]}"/"${modulefile}" /tmp/initramfs/"${modulefile}"
+# 		Print 6 CopyModule "copied ${modulefile}"
+# 	done
 
-		local modulefile=$(modinfo --basedir="${args[root]}" -k "${args[root]}"/boot/vmlinuz --field=filename "${module}")
-		modulefile="${modulefile#${PWD}/${args[root]}/}"
-
-		mkdir -p /tmp/initramfs/"$(dirname $modulefile)"
-		cp "${args[root]}"/"${modulefile}" /tmp/initramfs/"${modulefile}"
-		Print 6 CopyModule "copied ${modulefile}"
-	done
-}
+	#
+	# copy modules
+	#
+	# rm -fr /tmp/initramfs/usr/lib/modules/"$(KVersion)"
+	# if [[ -z "${args[no-modules]}" ]]; then
+	# 	mkdir -p /tmp/initramfs/usr/lib/modules/"$(KVersion)"
+	# 	if (( ${#modules[@]} == 0 )); then
+	# 		Print 5 kernel "copying all modules to initramfs"
+	# 		cp -r "${args[root]}"/usr/lib/modules/"$(KVersion)" /tmp/initramfs/usr/lib/modules/
+	# 	else
+	# 		for module in "${modules[@]}"; do CopyModule "${module}"; done
+	# 		cp "${args[root]}"/usr/lib/modules/"$(KVersion)"/modules.{order,builtin,builtin.modinfo} /tmp/initramfs/usr/lib/modules/"$(KVersion)"/
+	# 	fi
+	# 	depmod --basedir=/tmp/initramfs/usr --outdir=/tmp/initramfs/usr "$(KVersion)"
+	# fi
+# }
 Main "$@"

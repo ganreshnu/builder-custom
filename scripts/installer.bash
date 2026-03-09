@@ -15,7 +15,7 @@ Options:
                                multiple times.
   --help                       Display this message and exit.
 
-Creates a pruned image of the composite directories.
+Creates a esp image containing an installer.
 EOD
 }
 Main() {
@@ -99,47 +99,32 @@ Main() {
 	#
 	# mount the overlay
 	#
-	local -r efitemp=$(mktemp -d)
-	mkdir "$efitemp"/efi
-	lowers+=( "$efitemp" )
-
 	(( ${#lowers[@]} == 0 )) && lowers+=( /var/empty )
-	fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")",upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 image "overlay mount failed"; return 1; }
+	fuse-overlayfs -o lowerdir="$(Join : "${lowers[@]}")",upperdir="${args[root]}",workdir="${args[workdir]}" /overlay || { >&2 Print 1 installer "overlay mount failed"; return 1; }
 
-	. /overlay/usr/lib/os-release
+	local -r distdir=/overlay/efi/EFI/Linux
 
-	#
-	# build the diskimage
-	#
-	local -r tempfile=$(mktemp)
-	systemd-repart --root=/overlay --seed="${args[seed]}" "${repartArgs[@]}" \
-		--definitions=/usr/lib/repart.d --defer-partitions=esp \
-		--empty=create --size=auto --json=short /overlay/"$IMAGE_ID"-"$IMAGE_VERSION".raw >"$tempfile"
-	kernel_args+=( usrhash="$(jq -r '.[] | select(.type == "usr-x86-64").roothash' "$tempfile")" )
-	# kernel_args+=( root=PARTUUID="$(jq -r '.[] | select(.type == "root-x86-64").uuid' "$tempfile")" )
-	# cp "${tempfile}" repart.out
-	rm "$tempfile"
-	Print 5 image "built image"
+	mkdir -p "$distdir"
+	mkdir -p /overlay/efi/loader/entries
+	cp /boot/loader.conf /overlay/efi/loader/
+	cp /boot/entries.srel /overlay/efi/loader/
+	mkdir /overlay/efi/EFI/BOOT
+	cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi /overlay/efi/EFI/BOOT/BOOTX64.EFI
+	# bootctl --esp-path=/overlay/efi random-seed
 
 	ukify build --linux=/overlay/boot/vmlinuz --cmdline="${kernel_args[*]}" \
 		--os-release=@/overlay/usr/lib/os-release --initrd=/overlay/boot/initramfs.cpio.zst \
 		--secureboot-private-key=verity.key --secureboot-certificate=verity.crt \
-		--output=/overlay/"$IMAGE_ID"-"$IMAGE_VERSION".efi
+		--output="$distdir"/installer.efi
 	Print 5 image 'built uki'
 
-	local -r tempdir=$(mktemp -d)
-	mkdir -p "$tempdir"/efi/EFI/{BOOT,Linux}
-	mkdir -p "$tempdir"/efi/loader/entries
-	cp /boot/loader.conf "$tempdir"/efi/loader/
-	cp /boot/entries.srel "$tempdir"/efi/loader/
-	cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "$tempdir"/efi/EFI/BOOT/BOOTX64.EFI
-	cp /overlay/"$IMAGE_ID"-"$IMAGE_VERSION".efi "$tempdir"/efi/EFI/Linux/
-	mkdir -p "$tempdir"/usr/lib
-	cp /overlay/usr/lib/os-release "$tempdir"/usr/lib/
-
-	systemd-repart --root="$tempdir" --seed="${args[seed]}" "${repartArgs[@]}" \
-		--definitions=/usr/lib/repart.d --include-partitions=esp \
-		--dry-run=no /overlay/"$IMAGE_ID"-"$IMAGE_VERSION".raw
+	#
+	# build the diskimage
+	#
+	systemd-repart --root=/overlay --seed="${args[seed]}" "${repartArgs[@]}" \
+		--empty=create --size=auto --definitions=/usr/lib/repart.d \
+		--include-partitions=esp,linux-generic /overlay/installer.raw
+	Print 5 image "built image"
 
 	#
 	# unmount the overlay

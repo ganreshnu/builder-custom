@@ -1,10 +1,12 @@
 sys-apps/systemd
 sys-apps/kbd
+app-shells/bash
+app-shells/bash-completion
+sys-apps/grep
 sys-apps/shadow
-sys-fs/btrfs-progs
 sys-fs/erofs-utils
 sys-fs/dosfstools
-#app-shells/bash
-#sys-apps/coreutils
+sys-fs/mtools
+#net-main/mailbase
 #acct-group/mail
 #acct-user/mail
