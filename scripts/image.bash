@@ -111,14 +111,20 @@ Main() {
 	#
 	# build the diskimage
 	#
+	mkdir /overlay/dist
 	local -r tempfile=$(mktemp)
 	systemd-repart --root=/overlay --seed="${args[seed]}" "${repartArgs[@]}" \
-		--definitions=/usr/lib/repart.d --defer-partitions=esp \
+		--definitions=/usr/lib/repart.d --defer-partitions=esp,linux-generic --split=yes \
 		--empty=create --size=auto --json=short /overlay/"$IMAGE_ID"-"$IMAGE_VERSION".raw >"$tempfile"
+	# kernel_args+=(
+	# 	root=dissect
+	# 	systemd.image_policy=esp=unprotected:usr=verity+signed+read-only-on:root=unprotected+encrypted+read-only-off:=*
+	# )
 	kernel_args+=( usrhash="$(jq -r '.[] | select(.type == "usr-x86-64").roothash' "$tempfile")" )
 	# kernel_args+=( root=PARTUUID="$(jq -r '.[] | select(.type == "root-x86-64").uuid' "$tempfile")" )
 	# cp "${tempfile}" repart.out
 	rm "$tempfile"
+	rmdir /overlay/dist
 	Print 5 image "built image"
 
 	ukify build --linux=/overlay/boot/vmlinuz --cmdline="${kernel_args[*]}" \
@@ -126,20 +132,26 @@ Main() {
 		--secureboot-private-key=verity.key --secureboot-certificate=verity.crt \
 		--output=/overlay/"$IMAGE_ID"-"$IMAGE_VERSION".efi
 	Print 5 image 'built uki'
+	Print 6 image "${kernel_args[*]}"
 
-	local -r tempdir=$(mktemp -d)
-	mkdir -p "$tempdir"/efi/EFI/{BOOT,Linux}
-	mkdir -p "$tempdir"/efi/loader/entries
-	cp /boot/loader.conf "$tempdir"/efi/loader/
-	cp /boot/entries.srel "$tempdir"/efi/loader/
-	cp /usr/lib/systemd/boot/efi/systemd-bootx64.efi "$tempdir"/efi/EFI/BOOT/BOOTX64.EFI
+	local -r tempdir=$(mktemp -d);
+	mkdir -p "$tempdir"/efi "$tempdir"/usr/lib "$tempdir"/dist
+
+	# create the bootloader
+	chmod 0700 "$tempdir"/efi
+	mount --bind "$tempdir"/efi "$tempdir"/efi
+	SYSTEMD_RELAX_ESP_CHECKS=1 bootctl --variables=no --esp-path="$tempdir"/efi install
+	umount "$tempdir"/efi
+
 	cp /overlay/"$IMAGE_ID"-"$IMAGE_VERSION".efi "$tempdir"/efi/EFI/Linux/
-	mkdir -p "$tempdir"/usr/lib
 	cp /overlay/usr/lib/os-release "$tempdir"/usr/lib/
+	cp /overlay/"$IMAGE_ID"-"$IMAGE_VERSION".{os,hash,sig}-*.raw "$tempdir"/dist/
 
 	systemd-repart --root="$tempdir" --seed="${args[seed]}" "${repartArgs[@]}" \
-		--definitions=/usr/lib/repart.d --include-partitions=esp \
+		--definitions=/usr/lib/repart.d --include-partitions=esp,linux-generic \
 		--dry-run=no /overlay/"$IMAGE_ID"-"$IMAGE_VERSION".raw
+
+	rm -r "$tempdir"
 
 	#
 	# unmount the overlay
